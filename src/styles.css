@@ -1,0 +1,266 @@
+@import url("https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap");
+@import "tailwindcss";
+
+@theme {
+  --color-studio: #e4e8ee;
+  --color-bg: #070b12;
+  --color-fg: #f5f7fb;
+  --color-muted: #9aa6bd;
+  --color-faint: #73809a;
+  --color-cyan: #3ad7ff;
+  --color-cyan-2: #8eebff;
+  --color-good: #3ddc97;
+  --color-danger: #ff5d73;
+  --color-housing: #2ee6c7;
+  --color-savings: #ff8a3d;
+  --color-transport: #4c8dff;
+  --color-food: #e15cf0;
+  --color-shopping: #8b7cff;
+  --color-fun: #f6c445;
+  --color-health: #34d399;
+  --font-sans: "Outfit", ui-sans-serif, system-ui, sans-serif;
+  --radius-card: 1.35rem;
+  --text-hero: 3.05rem;
+  --text-hero--line-height: 1;
+  --text-micro: 0.6875rem;
+  --text-micro--line-height: 1.25;
+}
+
+@layer base {
+  html,
+  body {
+    height: 100%;
+  }
+  body {
+    margin: 0;
+    background: var(--color-studio);
+    color: var(--color-fg);
+    font-family: var(--font-sans);
+    font-feature-settings: "tnum" 1;
+  }
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+  input,
+  select {
+    color-scheme: dark;
+  }
+}
+
+@layer components {
+  .studio {
+    min-height: 100dvh;
+    display: grid;
+    place-items: center;
+    padding: 28px 16px;
+    background:
+      radial-gradient(900px 420px at 50% 0%, #f7f8fb, transparent 60%),
+      var(--color-studio);
+  }
+  .phone {
+    position: relative;
+    width: min(400px, 100%);
+    height: min(860px, calc(100dvh - 56px));
+    background: var(--color-bg);
+    border-radius: 40px;
+    overflow: hidden;
+    box-shadow:
+      0 40px 80px rgba(15, 23, 42, 0.28),
+      0 0 0 10px #11151c,
+      0 0 0 12px #3a414c;
+  }
+  .phone-scroll {
+    height: 100%;
+    overflow-x: hidden;
+    overflow-y: auto;
+    scrollbar-width: none;
+  }
+  .phone-scroll::-webkit-scrollbar {
+    display: none;
+  }
+  .home-bg {
+    background:
+      radial-gradient(90% 36% at 50% 12%, rgba(56, 150, 210, 0.2), transparent 62%),
+      var(--color-bg);
+  }
+  .month-pill {
+    display: inline-flex;
+    align-items: center;
+    max-width: 100%;
+    height: 46px;
+    padding: 0 18px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.08);
+    font-size: 1.22rem;
+    font-weight: 600;
+    letter-spacing: -0.03em;
+  }
+  .icon-btn {
+    width: 44px;
+    height: 44px;
+    border-radius: 999px;
+    display: grid;
+    place-items: center;
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--color-fg);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+  }
+  .icon-btn:active,
+  .insight:active,
+  .add-pill:active,
+  .month-pill:active {
+    transform: scale(0.97);
+  }
+  .insight {
+    text-align: left;
+    border-radius: var(--radius-card);
+    padding: 14px 14px 12px;
+    min-height: 200px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    min-width: 0;
+    color: var(--color-fg);
+    transition: transform 160ms ease;
+  }
+  .card-trend {
+    background: linear-gradient(180deg, #1b2344 0%, #12182e 100%);
+  }
+  .card-top {
+    background: linear-gradient(180deg, #2a1748 0%, #1a102c 100%);
+  }
+  .card-upcoming {
+    background: linear-gradient(180deg, #3a2a16 0%, #24180f 100%);
+  }
+  .card-saving {
+    background: linear-gradient(180deg, #122844 0%, #0d182c 100%);
+  }
+  .card-flow {
+    background: linear-gradient(180deg, #0e2e2a 0%, #0b1c1b 100%);
+  }
+  .card-accounts {
+    background: linear-gradient(180deg, #103222 0%, #0c1e16 100%);
+  }
+  .card-projects {
+    background: linear-gradient(180deg, #3a3014 0%, #241c0c 100%);
+  }
+  .add-pill {
+    position: absolute;
+    right: 16px;
+    bottom: calc(16px + env(safe-area-inset-bottom));
+    z-index: 5;
+    height: 48px;
+    padding: 0 18px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.16);
+    backdrop-filter: blur(18px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: var(--color-fg);
+    font-weight: 600;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
+  }
+  .txn {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+    padding: 10px 12px;
+    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.05);
+  }
+  .screen-trend {
+    background: radial-gradient(130% 58% at 50% -8%, #3c2f86 0%, #1a1444 34%, #0c1022 68%, #070b12 100%);
+  }
+  .screen-flow {
+    background: radial-gradient(130% 56% at 50% -8%, #0f7468 0%, #0c3f3a 30%, #071816 66%, #070b12 100%);
+  }
+  .screen-break {
+    background: radial-gradient(130% 56% at 50% -8%, #7a2eb8 0%, #43156f 32%, #160820 68%, #070b12 100%);
+  }
+  .screen-accounts {
+    background: radial-gradient(130% 52% at 50% -8%, #17864c 0%, #0d422c 32%, #07140e 68%, #070b12 100%);
+  }
+  .screen-upcoming {
+    background: radial-gradient(130% 48% at 50% -8%, #7a5530 0%, #2c2116 38%, #0c0a08 70%, #070b12 100%);
+  }
+  .screen-saving {
+    background: radial-gradient(130% 52% at 50% -8%, #1e5694 0%, #122a4e 34%, #070d18 70%, #070b12 100%);
+  }
+  .screen-projects {
+    background: radial-gradient(130% 52% at 50% -8%, #8a6a1e 0%, #3d3012 34%, #120e08 70%, #070b12 100%);
+  }
+  .screen-plain {
+    background: var(--color-bg);
+  }
+  .field {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    padding: 12px 14px;
+    outline: none;
+  }
+  .field:focus {
+    border-color: rgba(58, 215, 255, 0.7);
+  }
+  .segmented {
+    display: flex;
+    gap: 4px;
+    padding: 4px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.1);
+  }
+  .segmented button {
+    flex: 1;
+    min-width: 0;
+    border-radius: 999px;
+    padding: 8px 8px;
+    color: var(--color-muted);
+    font-size: 0.8125rem;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .segmented button[data-on="true"] {
+    background: rgba(255, 255, 255, 0.16);
+    color: var(--color-fg);
+  }
+  .cal {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    background: rgba(0, 0, 0, 0.38);
+    border-radius: 24px;
+    padding: 12px 6px 8px;
+  }
+  .sheet-card {
+    border-radius: 22px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+  }
+}
+
+@media (max-width: 520px) {
+  .studio {
+    padding: 0;
+    background: var(--color-bg);
+  }
+  .phone {
+    width: 100%;
+    height: 100dvh;
+    border-radius: 0;
+    box-shadow: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .insight,
+  .icon-btn,
+  .add-pill,
+  .month-pill {
+    transition: none;
+  }
+}
