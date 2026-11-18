@@ -4,6 +4,9 @@ import { toast } from "sonner";
 import { BackupError, exportBackup, importBackup, type Snapshot } from "@/lib/backup";
 import {
   CATEGORIES,
+  budgetOf,
+  defaultSavingId,
+  defaultSpendingId,
   formatMoney,
   todayISO,
   type Account,
@@ -12,10 +15,11 @@ import {
   type Transaction,
   type TxKind,
 } from "@/lib/finance";
-import { accountTitle, catLabel, monthLabel, monthShortLabel, useI18n } from "@/lib/i18n";
+import { accountTitle, catLabel, monthLabel, monthShortLabel, projectTitle, useI18n } from "@/lib/i18n";
 import { useFinance, type LocaleMode } from "@/lib/store";
 import { ScreenHeader } from "@/components/lumen/screens";
 import { TxnList } from "@/components/lumen/lists";
+import type { TxDraft } from "@/components/lumen/nav";
 
 export function parseMoney(raw: string) {
   let s = raw.trim().replace(/[€\s]/g, "");
@@ -69,7 +73,8 @@ export function MonthPicker({ month, onClose }: { month: string; onClose: () => 
 
 export function BudgetScreen({ onClose }: { onClose: () => void }) {
   const month = useFinance((s) => s.month);
-  const budget = useFinance((s) => s.budgets[month] ?? 3900);
+  const budgets = useFinance((s) => s.budgets);
+  const budget = budgetOf(budgets, month);
   const allocation = useFinance((s) => s.allocations[month] ?? {});
   const setBudget = useFinance((s) => s.setBudget);
   const setAllocation = useFinance((s) => s.setAllocation);
@@ -123,7 +128,8 @@ export function BudgetScreen({ onClose }: { onClose: () => void }) {
 }
 
 export function SettingsScreen({ onClose }: { onClose: () => void }) {
-  const reset = useFinance((s) => s.reset);
+  const begin = useFinance((s) => s.begin);
+  const start = useFinance((s) => s.start);
   const restoreSnapshot = useFinance((s) => s.restoreSnapshot);
   const mode = useFinance((s) => s.localeMode);
   const setLocaleMode = useFinance((s) => s.setLocaleMode);
@@ -132,6 +138,17 @@ export function SettingsScreen({ onClose }: { onClose: () => void }) {
   const [code, setCode] = useState("");
   const [paste, setPaste] = useState("");
   const [armed, setArmed] = useState(false);
+  const [dataArmed, setDataArmed] = useState<"demo" | "own" | null>(null);
+
+  const startOver = (mode: "demo" | "own") => {
+    if (dataArmed !== mode) {
+      setDataArmed(mode);
+      return;
+    }
+    begin(mode);
+    toast(t(mode === "demo" ? "demoLoaded" : "erased"));
+    onClose();
+  };
 
   const copy = async () => {
     const state = useFinance.getState();
@@ -145,6 +162,7 @@ export function SettingsScreen({ onClose }: { onClose: () => void }) {
       month: state.month,
       insightOrder: state.insightOrder,
       hiddenInsights: state.hiddenInsights,
+      demo: state.start === "demo",
     };
     const text = await exportBackup(snapshot, phrase);
     setCode(text);
@@ -226,17 +244,17 @@ export function SettingsScreen({ onClose }: { onClose: () => void }) {
             {armed ? t("restoreAsk") : t("restore")}
           </button>
         </section>
-        <button
-          type="button"
-          className="w-full rounded-2xl bg-white/10 py-4 font-semibold"
-          onClick={() => {
-            reset();
-            toast(t("resetDone"));
-            onClose();
-          }}
-        >
-          {t("reset")}
-        </button>
+        <section className="space-y-3">
+          <h2 className="font-semibold">{t("dataHeading")}</h2>
+          {start !== "demo" ? (
+            <button type="button" className="w-full rounded-2xl bg-white/10 py-4 font-semibold" onClick={() => startOver("demo")}>
+              {dataArmed === "demo" ? t("tapAgain") : t("loadDemo")}
+            </button>
+          ) : null}
+          <button type="button" className="w-full rounded-2xl bg-white/10 py-4 font-semibold text-danger" onClick={() => startOver("own")}>
+            {dataArmed === "own" ? t("tapAgain") : t("eraseAll")}
+          </button>
+        </section>
       </div>
     </div>
   );
@@ -287,29 +305,47 @@ export function TransactionEditor({
   id,
   date,
   seed,
+  draft,
   onClose,
 }: {
   id?: string;
   date?: string;
   seed?: Transaction;
+  draft?: TxDraft;
   onClose: () => void;
 }) {
   const accounts = useFinance((s) => s.accounts);
+  const projects = useFinance((s) => s.projects);
   const stored = useFinance((s) => (id && !id.startsWith("proj-") ? s.transactions.find((t) => t.id === id) : undefined));
-  const existing = stored ?? seed;
+  const base: TxDraft | undefined = stored ?? seed ?? draft;
   const add = useFinance((s) => s.addTransaction);
   const update = useFinance((s) => s.updateTransaction);
   const remove = useFinance((s) => s.deleteTransaction);
   const { t, locale } = useI18n();
-  const projected = !stored;
-  const [kind, setKind] = useState<TxKind>(existing?.kind ?? "expense");
-  const [amount, setAmount] = useState(existing ? String(existing.amount).replace(".", ",") : "");
-  const [title, setTitle] = useState(existing?.title ?? "");
-  const [categoryId, setCategoryId] = useState<CategoryId | "">(existing?.categoryId ?? "food");
-  const [accountId, setAccountId] = useState(existing?.accountId ?? accounts.find((a) => a.isDefault && a.kind === "spending")?.id ?? accounts[0]?.id);
-  const [toAccountId, setToAccountId] = useState(existing?.toAccountId ?? accounts.find((a) => a.kind === "saving")?.id ?? "");
-  const [when, setWhen] = useState(existing?.date ?? date ?? todayISO());
-  const [recurring, setRecurring] = useState(!!existing?.recurring);
+  const [kind, setKind] = useState<TxKind>(base?.kind ?? "expense");
+  const [amount, setAmount] = useState(base?.amount ? String(base.amount).replace(".", ",") : "");
+  const [title, setTitle] = useState(base?.title ?? "");
+  // "" means no category: income, or money moved between two of your own accounts.
+  const [categoryId, setCategoryId] = useState<CategoryId | "">(base ? base.categoryId ?? "" : "food");
+  const [accountId, setAccountId] = useState(base?.accountId ?? defaultSpendingId(accounts));
+  const [toAccountId, setToAccountId] = useState(base?.toAccountId ?? defaultSavingId(accounts));
+  const [when, setWhen] = useState(base?.date ?? date ?? todayISO());
+  const [recurring, setRecurring] = useState(!!base?.recurring);
+  const [projectId, setProjectId] = useState(base?.projectId ?? "");
+
+  const chooseKind = (k: TxKind) => {
+    setKind(k);
+    if (k === "expense" && !categoryId) setCategoryId("food");
+    if (k === "transfer" && !base) setCategoryId(accounts.find((a) => a.id === toAccountId)?.kind === "saving" ? "savings" : "");
+  };
+
+  const chooseTarget = (target: string) => {
+    setToAccountId(target);
+    // A new transfer into a saving account counts as "Savings" in the budget; between spending accounts it counts as nothing.
+    if (!stored && (categoryId === "" || categoryId === "savings")) {
+      setCategoryId(accounts.find((a) => a.id === target)?.kind === "saving" ? "savings" : "");
+    }
+  };
 
   const save = () => {
     const value = parseMoney(amount);
@@ -321,6 +357,10 @@ export function TransactionEditor({
       toast(t("addName"));
       return;
     }
+    if (kind === "transfer" && (!toAccountId || toAccountId === accountId)) {
+      toast(t("sameAccount"));
+      return;
+    }
     const payload = {
       title: title.trim(),
       amount: value,
@@ -330,18 +370,27 @@ export function TransactionEditor({
       categoryId: kind === "income" ? undefined : categoryId || undefined,
       toAccountId: kind === "transfer" ? toAccountId : undefined,
       recurring: kind === "expense" ? recurring : undefined,
-      flow: existing?.flow,
+      flow: base?.flow,
+      projectId: projectId || undefined,
+      // The row a payment settles stays attached only while it still points at the same project.
+      planRef: projectId && projectId === base?.projectId ? base?.planRef : undefined,
     };
-    if (existing && !projected) update(existing.id, payload);
+    if (stored) update(stored.id, payload);
     else add(payload);
-    toast(existing && !projected ? t("txUpdated") : t("txAdded"));
+    toast(stored ? t("txUpdated") : t("txAdded"));
     onClose();
   };
+
+  const accountOptions = accounts.map((a) => (
+    <option key={a.id} value={a.id}>
+      {accountTitle(locale, a)}
+    </option>
+  ));
 
   return (
     <div className="screen-plain absolute inset-0 z-10 flex flex-col">
       <ScreenHeader
-        title={existing && !projected ? t("editTx") : t("newTx")}
+        title={stored ? t("editTx") : t("newTx")}
         onClose={onClose}
         right={
           <button type="button" className="text-sm font-semibold text-cyan" onClick={save}>
@@ -352,7 +401,7 @@ export function TransactionEditor({
       <div className="phone-scroll space-y-4 px-5 pb-16 pt-4">
         <div className="segmented">
           {(["expense", "income", "transfer"] as TxKind[]).map((k) => (
-            <button key={k} type="button" data-on={kind === k} className="flex-1" onClick={() => setKind(k)}>
+            <button key={k} type="button" data-on={kind === k} className="flex-1" onClick={() => chooseKind(k)}>
               {t(k)}
             </button>
           ))}
@@ -366,33 +415,34 @@ export function TransactionEditor({
                 key={c.id}
                 type="button"
                 onClick={() => setCategoryId(c.id)}
-                className={`rounded-2xl px-3 py-3 text-left text-sm ${categoryId === c.id ? "bg-white/15 ring-1 ring-white/30" : "bg-white/5"}`}
+                className={`min-w-0 truncate rounded-2xl px-3 py-3 text-left text-sm ${categoryId === c.id ? "bg-white/15 ring-1 ring-white/30" : "bg-white/5"}`}
               >
                 <span className="mr-2 inline-block size-2 rounded-full" style={{ background: c.color }} />
                 {catLabel(locale, c.id)}
               </button>
             ))}
+            {kind === "transfer" ? (
+              <button
+                type="button"
+                onClick={() => setCategoryId("")}
+                className={`min-w-0 truncate rounded-2xl px-3 py-3 text-left text-sm ${categoryId === "" ? "bg-white/15 ring-1 ring-white/30" : "bg-white/5"}`}
+              >
+                {t("noCategory")}
+              </button>
+            ) : null}
           </div>
         ) : null}
         <label className="block text-sm text-muted">
           {t("account")}
           <select className="field mt-1" value={accountId} onChange={(e) => setAccountId(e.target.value)}>
-            {accounts.map((a) => (
-              <option key={a.id} value={a.id}>
-                {accountTitle(locale, a)}
-              </option>
-            ))}
+            {accountOptions}
           </select>
         </label>
         {kind === "transfer" ? (
           <label className="block text-sm text-muted">
             {t("to")}
-            <select className="field mt-1" value={toAccountId} onChange={(e) => setToAccountId(e.target.value)}>
-              {accounts.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {accountTitle(locale, a)}
-                </option>
-              ))}
+            <select className="field mt-1" value={toAccountId} onChange={(e) => chooseTarget(e.target.value)}>
+              {accountOptions}
             </select>
           </label>
         ) : null}
@@ -400,18 +450,31 @@ export function TransactionEditor({
           {t("date")}
           <input className="field mt-1" type="date" value={when} onChange={(e) => setWhen(e.target.value)} />
         </label>
+        {projects.length > 0 && kind !== "income" ? (
+          <label className="block text-sm text-muted">
+            {t("projectFor")}
+            <select className="field mt-1" value={projectId} onChange={(e) => setProjectId(e.target.value)}>
+              <option value="">{t("noProject")}</option>
+              {projects.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {projectTitle(locale, p)}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : null}
         {kind === "expense" ? (
           <button type="button" className="sheet-card flex w-full items-center justify-between px-4 py-3" onClick={() => setRecurring((v) => !v)}>
             <span>{t("repeats")}</span>
             <span className={`text-sm font-semibold ${recurring ? "text-cyan" : "text-muted"}`}>{recurring ? t("on") : t("off")}</span>
           </button>
         ) : null}
-        {existing && !projected ? (
+        {stored ? (
           <button
             type="button"
             className="flex w-full items-center justify-center gap-2 py-3 text-danger"
             onClick={() => {
-              remove(existing.id);
+              remove(stored.id);
               toast(t("txDeleted"));
               onClose();
             }}

@@ -5,9 +5,9 @@ Lumen is a local-first budget for one month at a time. The money stays on the de
 ## What you can do
 
 - See what is left to spend, what is already given a job, and what is still free.
-- Open each insight: trend, top spending, upcoming bills, saving rate, money flow, accounts, and goals.
+- Open each insight: trend, top spending, upcoming bills, saving rate, money flow, accounts, and projects.
 - Add an expense, income, or transfer. It stays in local storage on this device.
-- Save toward a home, a car, or anything else. Or pay for it in parts.
+- Plan a project: a home, a car, a trip, anything big. Save toward it or pay in parts, schedule its costs, and record each payment.
 - Copy a backup code and paste it on a new phone.
 
 ## Language
@@ -26,12 +26,20 @@ Prefixes:
 - `LUMEN1.` open code
 - `LUMEN1P.` locked code
 
-## Goals
+## First launch
 
-A goal is either money you are setting aside, or a purchase you pay in parts.
+Lumen asks once: start with your own data, or explore made-up sample data. A clean start has two accounts (Main, Saving), no budget and no history. Set the monthly budget first; Home reminds you until you do. Settings → Your data can load the sample data or erase everything, each after a second tap.
 
-- Saving up: price, already saved, and how much to set aside each month. Lumen shows how many months that pace needs.
-- Paying in parts: price, down payment, number of months, yearly rate, and the first payment date. `0%` means equal payments. A rate uses a standard monthly loan payment. Cash already saved counts toward the down payment. Future installments show up on the Upcoming calendar. They are not stored as transactions until you record them.
+## Projects
+
+A project is a purchase or a plan: a home, a car, a trip, anything else.
+
+- **Saving up**: price, already saved, how much you set aside each month, and an optional target date. Lumen shows the months that pace needs and, with a target date, the monthly amount that makes it.
+- **Paying in parts**: price, down payment, months, yearly rate, first payment date, and how many payments were made before you started tracking. `0%` means equal payments; a rate uses a standard monthly loan payment. Cash already set aside counts toward the down payment.
+- **Costs and dates**: flights, notary, insurance, anything you will pay, each with a date. They are not part of the price; they are the schedule.
+- **Recording**: every schedule row has a Pay button that opens the normal transaction editor, pre-filled. A saved payment settles the row. Money set aside is a transfer into your saving account tagged to the project. Any expense can also be tagged to a project in the transaction editor.
+- **Upcoming** lists unpaid rows. A row whose date has passed stays there marked Due until it is paid, and rows missed in earlier months are carried into the current month.
+- **Progress**: money set aside, or paid out directly, whichever is more. Nothing is counted twice.
 
 ## Android
 

@@ -12,6 +12,8 @@ export interface Snapshot {
   month: string;
   insightOrder: InsightId[];
   hiddenInsights: InsightId[];
+  /** True when the data is the made-up sample set. */
+  demo?: boolean;
 }
 
 export class BackupError extends Error {

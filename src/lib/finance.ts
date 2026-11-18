@@ -35,6 +35,10 @@ export interface Transaction {
   accountId: string;
   toAccountId?: string;
   recurring?: boolean;
+  /** Project this money belongs to: a payment for it, or money set aside for it. */
+  projectId?: string;
+  /** The schedule row this payment settles (see scheduleRows). */
+  planRef?: string;
 }
 
 export interface Account {
@@ -54,7 +58,15 @@ export interface SeedData {
   projects: Project[];
 }
 
-export type ProjectKind = "home" | "car" | "other";
+export type ProjectKind = "home" | "car" | "trip" | "other";
+
+/** One planned cost with a date: a flight, a notary fee, an insurance. */
+export interface ProjectItem {
+  id: string;
+  title: string;
+  amount: number;
+  date: string;
+}
 
 export interface Project {
   id: string;
@@ -73,6 +85,13 @@ export interface Project {
   apr: number;
   /** First installment date. */
   start: string;
+  /** Finish line. While saving up it becomes "set aside this much a month". */
+  deadline?: string;
+  notes?: string;
+  /** Planned costs and when they fall due. Each one is settled by recording a payment. */
+  items?: ProjectItem[];
+  /** Installments paid before this project was tracked here. */
+  paidBefore?: number;
 }
 
 const MONTH_CENTS: Record<number, number> = {
@@ -133,10 +152,17 @@ export function daysInMonth(year: number, month: number) {
   return new Date(year, month, 0).getDate();
 }
 
-/** The screens were captured on this day. Keep the demo clock here so the month story stays intact. */
+/** The sample data was captured on this day. */
 const DEMO_TODAY = new Date(2026, 10, 6, 12, 0, 0);
 
-export function todayISO(now = DEMO_TODAY) {
+let demoClock = false;
+
+/** While sample data is on, "today" stays on its capture day so the November story holds. Real data uses the real date. */
+export function setDemoClock(on: boolean) {
+  demoClock = on;
+}
+
+export function todayISO(now: Date = demoClock ? DEMO_TODAY : new Date()) {
   const y = now.getFullYear();
   const m = String(now.getMonth() + 1).padStart(2, "0");
   const d = String(now.getDate()).padStart(2, "0");
@@ -402,7 +428,48 @@ export function seedProjects(): Project[] {
       apr: 4.9,
       start: "2026-12-05",
     },
+    {
+      id: "seed-trip",
+      name: "Summer trip",
+      kind: "trip",
+      target: 2400,
+      saved: 650,
+      monthlySave: 200,
+      installment: false,
+      downPayment: 0,
+      months: 12,
+      apr: 0,
+      start: "2026-12-01",
+      deadline: "2027-06-30",
+      items: [
+        { id: "flights", title: "Flights", amount: 480, date: "2027-02-10" },
+        { id: "hotel", title: "Hotel", amount: 920, date: "2027-05-20" },
+        { id: "insurance", title: "Travel insurance", amount: 60, date: "2027-05-25" },
+      ],
+    },
   ];
+}
+
+/** A clean start: two accounts, no budget, no history. */
+export function emptyData(): SeedData {
+  return {
+    accounts: [
+      { id: "main", name: "Main", kind: "spending", color: "#4C8DFF", isDefault: true, opening: 0 },
+      { id: "saving", name: "Saving", kind: "saving", color: "#3DDC97", isDefault: true, opening: 0 },
+    ],
+    transactions: [],
+    budgets: {},
+    allocations: {},
+    projects: [],
+  };
+}
+
+export function defaultSpendingId(accounts: Account[]) {
+  return (accounts.find((a) => a.isDefault && a.kind === "spending") ?? accounts.find((a) => a.kind === "spending") ?? accounts[0])?.id ?? "main";
+}
+
+export function defaultSavingId(accounts: Account[]) {
+  return (accounts.find((a) => a.isDefault && a.kind === "saving") ?? accounts.find((a) => a.kind === "saving"))?.id ?? "";
 }
 
 export function monthlyPayment(principal: number, aprPercent: number, months: number) {
@@ -440,6 +507,7 @@ export function addMonthsISO(iso: string, delta: number) {
 export interface ProjectPlan {
   mode: "save" | "installment";
   price: number;
+  /** Cash set aside so far (or paid out, if that is more). */
   saved: number;
   left: number;
   progress: number;
@@ -453,22 +521,94 @@ export interface ProjectPlan {
   /** Cash still needed before the loan, when savings are short of the down payment. */
   downGap: number;
   owed: number;
+  /** Money recorded as paid out for this project. */
+  paid: number;
+  /** Planned costs (not installments) still unpaid. */
+  scheduled: number;
+  /** Unpaid schedule rows whose date has come. */
+  dueCount: number;
+  deadline: string | null;
+  /** Monthly amount that reaches the price by the deadline, when saving up. */
+  needMonthly: number | null;
 }
 
-export function projectPlan(p: Project, today = todayISO()): ProjectPlan {
+export interface PlanRow {
+  /** Id of the row; a payment that settles it stores this as planRef. */
+  ref: string;
+  projectId: string;
+  title: string;
+  amount: number;
+  date: string;
+  installment: boolean;
+  paid: boolean;
+}
+
+const KIND_CATEGORY: Record<ProjectKind, CategoryId> = { home: "housing", car: "transport", trip: "fun", other: "shopping" };
+
+export function projectCategory(kind: ProjectKind): CategoryId {
+  return KIND_CATEGORY[kind];
+}
+
+function terms(p: Project) {
   const price = Math.max(0, p.target);
-  const saved = Math.max(0, p.saved);
+  const down = Math.min(price, Math.max(0, p.downPayment));
+  const financed = Math.max(0, euros(cents(price) - cents(down)));
+  const months = Math.max(1, Math.round(p.months || 1));
+  return { price, down, financed, months, monthly: monthlyPayment(financed, p.apr, months) };
+}
+
+/** Everything the project expects to pay, with its date and whether a recorded payment already settles it. */
+export function scheduleRows(p: Project, txns: Transaction[], today = todayISO()): PlanRow[] {
+  const settled = new Set<string>();
+  for (const tx of txns) if (tx.projectId === p.id && tx.planRef) settled.add(tx.planRef);
+  const rows: PlanRow[] = [];
+  if (p.installment) {
+    const { months, monthly } = terms(p);
+    const start = p.start || today;
+    const before = Math.max(0, Math.round(p.paidBefore ?? 0));
+    for (let i = 0; i < months; i++) {
+      const date = addMonthsISO(start, i);
+      const ref = `plan:${p.id}:${date}`;
+      rows.push({ ref, projectId: p.id, title: p.name, amount: monthly, date, installment: true, paid: i < before || settled.has(ref) });
+    }
+  }
+  for (const item of p.items ?? []) {
+    const ref = `item:${p.id}:${item.id}`;
+    rows.push({ ref, projectId: p.id, title: item.title, amount: item.amount, date: item.date, installment: false, paid: settled.has(ref) });
+  }
+  return rows.sort((a, b) => a.date.localeCompare(b.date) || a.title.localeCompare(b.title));
+}
+
+function monthsUntil(today: string, date: string) {
+  const [y1, m1] = today.split("-").map(Number);
+  const [y2, m2] = date.split("-").map(Number);
+  return Math.max(1, (y2 - y1) * 12 + (m2 - m1));
+}
+
+export function projectPlan(p: Project, today = todayISO(), txns: Transaction[] = []): ProjectPlan {
+  const mine = txns.filter((t) => t.projectId === p.id);
+  const paid = euros(mine.filter((t) => t.kind === "expense").reduce((s, t) => s + cents(t.amount), 0));
+  const setAside = euros(mine.filter((t) => t.kind === "transfer").reduce((s, t) => s + cents(t.amount), 0));
+  const unpaid = scheduleRows(p, txns, today).filter((r) => !r.paid);
+  const scheduled = euros(unpaid.filter((r) => !r.installment).reduce((s, r) => s + cents(r.amount), 0));
+  const dueCount = unpaid.filter((r) => r.date <= today).length;
+  const deadline = p.deadline || null;
+  const { price, down, financed, months, monthly } = terms(p);
+  const cash = euros(cents(Math.max(0, p.saved)) + cents(setAside));
+
   if (!p.installment) {
-    const left = Math.max(0, price - saved);
-    const monthly = Math.max(0, p.monthlySave);
+    // Money set aside, or paid out directly, whichever is more: never counted twice.
+    const saved = euros(Math.max(cents(cash), cents(paid)));
+    const left = Math.max(0, euros(cents(price) - cents(saved)));
+    const pace = Math.max(0, p.monthlySave);
     return {
       mode: "save",
       price,
       saved,
       left,
       progress: price > 0 ? Math.min(1, saved / price) : 0,
-      monthly,
-      monthsLeft: monthly > 0 && left > 0 ? Math.ceil(left / monthly) : left === 0 ? 0 : null,
+      monthly: pace,
+      monthsLeft: pace > 0 && left > 0 ? Math.ceil(left / pace) : left === 0 ? 0 : null,
       nextDate: null,
       paidCount: 0,
       months: 0,
@@ -476,27 +616,24 @@ export function projectPlan(p: Project, today = todayISO()): ProjectPlan {
       financed: 0,
       downGap: left,
       owed: 0,
+      paid,
+      scheduled,
+      dueCount,
+      deadline,
+      needMonthly: deadline && left > 0 ? Math.ceil(left / monthsUntil(today, deadline)) : null,
     };
   }
-  const down = Math.min(price, Math.max(0, p.downPayment));
-  const financed = Math.max(0, euros(cents(price) - cents(down)));
-  const months = Math.max(1, Math.round(p.months || 1));
-  const monthly = monthlyPayment(financed, p.apr, months);
-  let paidCount = 0;
-  let nextDate: string | null = null;
-  const start = p.start || today;
-  for (let i = 0; i < months; i++) {
-    const date = addMonthsISO(start, i);
-    if (date <= today) paidCount += 1;
-    else if (!nextDate) nextDate = date;
-  }
+
+  const rows = scheduleRows(p, txns, today).filter((r) => r.installment);
+  const paidCount = rows.filter((r) => r.paid).length;
+  const nextDate = rows.find((r) => !r.paid)?.date ?? null;
   const owed = remainingPrincipal(financed, p.apr, months, paidCount);
-  const downGap = Math.max(0, euros(cents(down) - cents(saved)));
-  const covered = Math.min(price, euros(cents(Math.min(saved, down)) + cents(financed) - cents(owed)));
+  const downGap = Math.max(0, euros(cents(down) - cents(cash)));
+  const covered = Math.min(price, euros(cents(Math.min(cash, down)) + cents(financed) - cents(owed)));
   return {
     mode: "installment",
     price,
-    saved,
+    saved: cash,
     left: Math.max(0, euros(cents(price) - cents(covered))),
     progress: price > 0 ? covered / price : 0,
     monthly,
@@ -508,29 +645,43 @@ export function projectPlan(p: Project, today = todayISO()): ProjectPlan {
     financed,
     downGap,
     owed,
+    paid,
+    scheduled,
+    dueCount,
+    deadline: null,
+    needMonthly: null,
   };
 }
 
-/** Future installment rows for one month. They are not stored transactions. */
-export function planBills(projects: Project[], month: string, today: string): Transaction[] {
+/**
+ * Unpaid schedule rows shown as upcoming expenses for one month. Rows from earlier months that were never
+ * paid are carried into the current month, so a missed payment stays visible. They are not stored transactions.
+ */
+export function planBills(
+  projects: Project[],
+  month: string,
+  today: string,
+  txns: Transaction[] = [],
+  accountId = "main",
+): Transaction[] {
   const out: Transaction[] = [];
+  const current = today.slice(0, 7);
   for (const project of projects) {
-    if (!project.installment) continue;
-    const plan = projectPlan(project, today);
-    const start = project.start || today;
-    for (let i = 0; i < plan.months; i++) {
-      const date = addMonthsISO(start, i);
-      if (!date.startsWith(month) || date <= today) continue;
-      const categoryId: CategoryId = project.kind === "home" ? "housing" : project.kind === "car" ? "transport" : "shopping";
+    for (const row of scheduleRows(project, txns, today)) {
+      if (row.paid) continue;
+      const overdue = month === current && row.date < `${month}-01`;
+      if (!row.date.startsWith(month) && !overdue) continue;
       out.push({
-        id: `plan:${project.id}:${date}`,
-        title: project.name,
-        amount: plan.monthly,
+        id: row.ref,
+        planRef: row.ref,
+        projectId: project.id,
+        title: row.title,
+        amount: row.amount,
         kind: "expense",
-        date,
-        categoryId,
-        accountId: "main",
-        recurring: true,
+        date: row.date,
+        categoryId: projectCategory(project.kind),
+        accountId,
+        recurring: row.installment,
       });
     }
   }
@@ -581,8 +732,12 @@ export function upcomingSpend(txns: Transaction[], key: string, today: string) {
     .sort((a, b) => a.date.localeCompare(b.date) || a.title.localeCompare(b.title));
 }
 
+/** The month's budget, else the latest earlier one, else 0 (not set yet). */
 export function budgetOf(budgets: Record<string, number>, key: string) {
-  return budgets[key] ?? 3900;
+  if (budgets[key] != null) return budgets[key];
+  let latest = "";
+  for (const k of Object.keys(budgets)) if (k < key && k > latest) latest = k;
+  return latest ? budgets[latest] : 0;
 }
 
 export function allocationMap(
@@ -599,7 +754,7 @@ export function allocatedTotal(map: Partial<Record<CategoryId, number>>) {
 export function daysRemaining(key: string, today = todayISO()) {
   const { year, month } = parseMonth(key);
   const dim = daysInMonth(year, month);
-  const current = currentMonthKey();
+  const current = today.slice(0, 7);
   if (key < current) return { tone: "past" as const, days: 0 };
   if (key > current) return { tone: "future" as const, days: 0 };
   const day = Number(today.slice(8, 10));
@@ -749,14 +904,15 @@ export function rangeStart(range: RangeId, today = todayISO()) {
   else if (range === "3M") dt.setMonth(dt.getMonth() - 3);
   else if (range === "6M") dt.setMonth(dt.getMonth() - 6);
   else if (range === "1Y") dt.setFullYear(dt.getFullYear() - 1);
-  else return "2025-12-31";
-  const isoDay = todayISO(dt);
-  if (isoDay < "2026-01-01") return "2025-12-31";
-  return isoDay;
+  else return today;
+  return todayISO(dt);
 }
 
 export function balanceSeries(accounts: Account[], txns: Transaction[], range: RangeId, today = todayISO()) {
-  const start = range === "All" ? "2025-12-31" : rangeStart(range, today);
+  // Never start before the first transaction: nothing to show earlier.
+  const first = shiftDay(txns.reduce((min, t) => (t.date < min ? t.date : min), today), -1);
+  const wanted = range === "All" ? first : rangeStart(range, today);
+  const start = wanted < first ? first : wanted;
   const points: { date: string; value: number }[] = [];
   const cursor = new Date(start + "T12:00:00");
   const end = new Date(today + "T12:00:00");

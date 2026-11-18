@@ -6,7 +6,7 @@ no database in use (`.grok/app-env.json`: auth off, `deploy.database` false).
 Two clients:
 - **Web PWA** in `src/` (TanStack Start, Vite, Zustand). The full product. Details: `HANDOFF.md`.
 - **Android** in `android/` (Jetpack Compose). A demo-level mirror: budget ring, insights, add expense.
-  No goals, backup codes or language switch yet.
+  No projects, backup codes or language switch yet.
 
 ## Commands
 - `npm run dev` · `npm run typecheck` · `npm run build` · `npm test` · `npm run lint`
@@ -23,8 +23,12 @@ Two clients:
   `src/lib/{auth,app-data,multiplayer,db.ts,preview-*}`.
 
 ## Invariants
-- November 2026 is the demo month, pinned by `DEMO_TODAY` (`2026-11-06`) on web and `Demo` in `data/Model.kt` on Android.
-  Home must read: 1.332 € left, budget 3.900 €, upcoming 297 €. Goal installments must not land in that month.
+- November 2026 is the sample-data month. Web pins "today" to `DEMO_TODAY` (`2026-11-06`) only while sample data is on
+  (`setDemoClock`); real data uses the real date. Android pins it in `Demo` (`data/Model.kt`).
+  Sample Home must read: 1.332 € left, budget 3.900 €, upcoming 297 €. Project rows must not land in that month.
+- First launch asks: own data or sample data (`start` in the store). New real data starts with no budget (0), not a default.
+- Projects: `scheduleRows` is the single list of planned payments. A row is paid only by a recorded transaction with the same
+  `planRef` (or `paidBefore` for old installments). Never assume payment by date; unpaid rows stay Due.
 - Posted spending, the ring and the trend ignore future plan rows; only Upcoming merges them in.
 - Category ids stay English; display names come from `catLabel`.
 - Android UI: system bars are handled once, in `LumenApp` (`safeDrawingPadding`). Rows that pair a label with an amount use

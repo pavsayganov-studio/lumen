@@ -23,6 +23,7 @@ import {
   balanceSeries,
   budgetOf,
   daysRemaining,
+  defaultSpendingId,
   formatMoney,
   formatPct,
   monthNet,
@@ -67,7 +68,8 @@ import {
   TransactionsScreen,
 } from "@/components/lumen/forms";
 import { TxnList } from "@/components/lumen/lists";
-import { GoalsScreen, ProjectEditor } from "@/components/lumen/projects";
+import { ProjectEditor, ProjectView, ProjectsScreen } from "@/components/lumen/projects";
+import { Welcome } from "@/components/lumen/welcome";
 
 const RANGES: RangeId[] = ["1W", "1M", "3M", "6M", "1Y", "All"];
 
@@ -85,9 +87,12 @@ export function App() {
   const [route, setRoute] = useState<Route>({ name: "home" });
   const [scope, setScope] = useState<"month" | "year">("month");
   const [range, setRange] = useState<RangeId>("1Y");
+  // Saved data loads after the first paint; wait for it so a returning person never sees the welcome screen.
+  const [ready, setReady] = useState(false);
   useEffect(() => {
-    void useFinance.persist.rehydrate();
+    void Promise.resolve(useFinance.persist.rehydrate()).then(() => setReady(true));
   }, []);
+  const start = useFinance((s) => s.start);
   const month = useFinance((s) => s.month);
   const raw = useFinance((s) => s.transactions);
   const accounts = useFinance((s) => s.accounts);
@@ -116,9 +121,18 @@ export function App() {
     if (next) setRoute({ name: "insight", id: next });
   };
 
+  if (!ready) {
+    return (
+      <div className="studio">
+        <div className="phone" />
+      </div>
+    );
+  }
+
   return (
     <div className="studio">
       <div className="phone">
+        {start === "ask" ? <Welcome /> : null}
         {route.name === "home" ? (
           <>
             <div className="phone-scroll home-bg">
@@ -159,6 +173,7 @@ export function App() {
             id={route.id}
             date={route.date}
             seed={txns.find((t) => t.id === route.id)}
+            draft={route.draft}
             onClose={() => setRoute({ name: "home" })}
           />
         ) : null}
@@ -178,7 +193,14 @@ export function App() {
           <AccountScreen id={route.id} txns={txns} onClose={() => setRoute({ name: "insight", id: "accounts" })} onOpen={(id) => setRoute({ name: "edit", id })} />
         ) : null}
         {route.name === "add-account" ? <AddAccountScreen onClose={() => setRoute({ name: "insight", id: "accounts" })} /> : null}
-        {route.name === "project" ? <ProjectEditor id={route.id} onClose={() => setRoute({ name: "insight", id: "projects" })} /> : null}
+        {route.name === "project" ? <ProjectView id={route.id} go={setRoute} onClose={() => setRoute({ name: "insight", id: "projects" })} /> : null}
+        {route.name === "project-edit" ? (
+          <ProjectEditor
+            key={route.id ?? "new"}
+            id={route.id}
+            onClose={() => setRoute(route.id ? { name: "project", id: route.id } : { name: "insight", id: "projects" })}
+          />
+        ) : null}
         <span className="sr-only">
           {monthLabel(locale, month)} {formatMoney(budgetOf(budgets, month))} {formatMoney(allocatedTotal(allocationMap(allocations, month)))}
         </span>
@@ -218,11 +240,12 @@ function Home({
   const save = savingStats(txns, month, today);
   const projects = useFinance((s) => s.projects);
   const { t, locale } = useI18n();
-  const bills = planBills(projects, month, today);
+  const start = useFinance((s) => s.start);
+  const bills = planBills(projects, month, today, txns, defaultSpendingId(accounts));
   const upcomingAll = [...upcoming, ...bills].sort((a, b) => a.date.localeCompare(b.date) || a.amount - b.amount);
   const upcomingTotalAll = upcomingAll.reduce((s, t) => s + t.amount, 0);
-  const lead = [...projects].sort((a, b) => projectPlan(b, today).progress - projectPlan(a, today).progress)[0];
-  const leadPlan = lead ? projectPlan(lead, today) : null;
+  const lead = [...projects].sort((a, b) => projectPlan(b, today, txns).progress - projectPlan(a, today, txns).progress)[0];
+  const leadPlan = lead ? projectPlan(lead, today, txns) : null;
   const total = totalBalance(accounts, txns, today);
   const net = monthNet(accounts, txns, month, today);
   const series = balanceSeries(accounts, txns, "6M", today).map((p) => p.value);
@@ -248,6 +271,18 @@ function Home({
           <Settings size={18} />
         </button>
       </div>
+
+      {start === "demo" ? (
+        <button type="button" className="mt-3 w-full rounded-2xl bg-white/10 px-4 py-3 text-left text-sm text-muted" onClick={() => go({ name: "settings" })}>
+          {t("demoBanner")}
+        </button>
+      ) : null}
+      {budget === 0 ? (
+        <button type="button" className="sheet-card mt-3 w-full px-4 py-3 text-left" onClick={() => go({ name: "budget" })}>
+          <span className="block font-semibold">{t("setBudgetFirst")}</span>
+          <span className="block text-sm text-muted">{t("setBudgetHint")}</span>
+        </button>
+      ) : null}
 
       <div className="mt-2">
         <BudgetRing
@@ -441,12 +476,12 @@ function InsightPager(props: {
         ) : null}
         {props.id === "upcoming" ? (
           <UpcomingScreen
-            txns={[...props.txns, ...planBills(projects, month, props.today)]}
+            txns={[...props.txns, ...planBills(projects, month, props.today, props.txns, defaultSpendingId(props.accounts))]}
             month={month}
             today={props.today}
             onClose={props.onClose}
             onOpen={(tx) => {
-              if (tx.id.startsWith("plan:")) props.go({ name: "project", id: tx.id.split(":")[1] });
+              if (tx.planRef === tx.id && tx.projectId) props.go({ name: "project", id: tx.projectId });
               else props.go({ name: "edit", id: tx.id });
             }}
           />
@@ -465,7 +500,13 @@ function InsightPager(props: {
             onAdd={() => props.go({ name: "add-account" })}
           />
         ) : null}
-        {props.id === "projects" ? <GoalsScreen onClose={props.onClose} onOpen={(id) => props.go({ name: "project", id })} /> : null}
+        {props.id === "projects" ? (
+          <ProjectsScreen
+            onClose={props.onClose}
+            onOpen={(id) => props.go({ name: "project", id })}
+            onNew={() => props.go({ name: "project-edit" })}
+          />
+        ) : null}
       </div>
       <div className="flex items-end justify-between px-5 pb-4 pt-2">
         <button type="button" className="icon-btn" aria-label={t("previous")} onClick={props.onPrev}>

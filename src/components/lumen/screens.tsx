@@ -403,8 +403,16 @@ function GaugeBig({ pct }: { pct: number }) {
 
 export function useUpcomingGroups(txns: Transaction[], month: string, today: string) {
   return useMemo(() => {
+    // Unpaid project rows stay listed after their date (they are due), and rows missed in earlier months
+    // are carried into the current month. Everything else is listed only while it is still ahead.
+    const isRow = (t: Transaction) => t.planRef === t.id;
     const items = txns
-      .filter((t) => t.date.startsWith(month) && t.date > today && (t.kind === "expense" || t.categoryId))
+      .filter((t) => t.kind === "expense" || t.categoryId)
+      .filter((t) =>
+        isRow(t)
+          ? t.date.startsWith(month) || (month === today.slice(0, 7) && t.date < `${month}-01`)
+          : t.date.startsWith(month) && t.date > today,
+      )
       .sort((a, b) => a.date.localeCompare(b.date));
     const groups: { date: string; items: Transaction[] }[] = [];
     for (const tx of items) {
@@ -433,7 +441,7 @@ export function UpcomingScreen({
   const { t, locale } = useI18n();
   const projects = useFinance((s) => s.projects);
   const byDay = new Map<number, number>();
-  for (const g of groups) byDay.set(Number(g.date.slice(8, 10)), g.items.reduce((s, t) => s + t.amount, 0));
+  for (const g of groups) if (g.date.startsWith(month)) byDay.set(Number(g.date.slice(8, 10)), g.items.reduce((s, t) => s + t.amount, 0));
   const { year, month: m } = { year: Number(month.slice(0, 4)), month: Number(month.slice(5, 7)) };
   const first = new Date(year, m - 1, 1).getDay();
   const mondayIndex = (first + 6) % 7;
@@ -475,18 +483,17 @@ export function UpcomingScreen({
             <div className="space-y-2">
               {g.items.map((tx) => {
                 const cat = tx.categoryId ? categoryById(tx.categoryId) : null;
+                const project = tx.planRef === tx.id ? projects.find((p) => p.id === tx.projectId) : undefined;
+                const due = !!project && tx.date <= today;
                 return (
                   <button key={tx.id} type="button" className="txn w-full text-left" onClick={() => onOpen(tx)}>
                     <TxnAvatar title={tx.title} color={cat?.color ?? "var(--color-muted)"} />
                     <span className="min-w-0 flex-1">
-                      <span className="block truncate font-medium">
-                        {tx.id.startsWith("plan:")
-                          ? projectTitle(locale, projects.find((p) => p.id === tx.id.split(":")[1]) ?? { id: tx.id, name: tx.title })
-                          : tx.title}
-                      </span>
+                      <span className="block truncate font-medium">{project && tx.recurring ? projectTitle(locale, project) : tx.title}</span>
                       <span className="flex min-w-0 items-center gap-1 truncate text-sm text-muted">
-                        {tx.recurring ? t("monthly") : cat ? catLabel(locale, cat.id) : ""}
+                        {project && !tx.recurring ? projectTitle(locale, project) : tx.recurring ? t("monthly") : cat ? catLabel(locale, cat.id) : ""}
                         {tx.recurring ? <Repeat size={12} /> : null}
+                        {due ? <span className="ml-1 shrink-0 text-micro text-danger">{t("due")}</span> : null}
                       </span>
                     </span>
                     <span className="shrink-0 font-medium">{formatSigned(-tx.amount, 2)}</span>

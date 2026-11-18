@@ -3,9 +3,10 @@ import { createJSONStorage, persist } from "zustand/middleware";
 import {
   buildSeed,
   cents,
-  currentMonthKey,
+  emptyData,
   euros,
   postedSpend,
+  setDemoClock,
   spentByCategory,
   todayISO,
   type Account,
@@ -20,9 +21,13 @@ import type { Snapshot } from "./backup.ts";
 
 export type LocaleMode = "auto" | "en" | "ru";
 
+/** ask: first launch, nothing chosen yet. demo: made-up sample data. own: the person's real data. */
+export type StartMode = "ask" | "demo" | "own";
+
 const INSIGHT_ORDER: InsightId[] = ["trend", "top", "upcoming", "saving", "flow", "accounts", "projects"];
 
 interface FinanceState extends SeedData {
+  start: StartMode;
   month: string;
   insightOrder: InsightId[];
   hiddenInsights: InsightId[];
@@ -42,7 +47,8 @@ interface FinanceState extends SeedData {
   saveProject: (input: Project) => void;
   deleteProject: (id: string) => void;
   restoreSnapshot: (snapshot: Snapshot) => void;
-  reset: () => void;
+  /** Pick what the app starts with. Replaces all data; the language choice stays. */
+  begin: (mode: "demo" | "own") => void;
 }
 
 function bumpAllocations(
@@ -64,24 +70,14 @@ function bumpAllocations(
   return { ...allocations, [month]: map };
 }
 
-function fresh(): Pick<
-  FinanceState,
-  | "accounts"
-  | "transactions"
-  | "budgets"
-  | "allocations"
-  | "projects"
-  | "month"
-  | "insightOrder"
-  | "hiddenInsights"
-  | "localeMode"
-> {
+function dataFor(mode: StartMode) {
+  setDemoClock(mode === "demo");
   return {
-    ...buildSeed(),
-    month: currentMonthKey(),
+    ...(mode === "demo" ? buildSeed() : emptyData()),
+    start: mode,
+    month: todayISO().slice(0, 7),
     insightOrder: [...INSIGHT_ORDER],
-    hiddenInsights: [],
-    localeMode: "auto",
+    hiddenInsights: [] as InsightId[],
   };
 }
 
@@ -94,7 +90,8 @@ const memory = {
 export const useFinance = create<FinanceState>()(
   persist(
     (set, get) => ({
-      ...fresh(),
+      ...dataFor("ask"),
+      localeMode: "auto",
       setMonth: (month) => set({ month }),
       setLocaleMode: (mode) => set({ localeMode: mode }),
       toggleInsight: (id) =>
@@ -166,9 +163,17 @@ export const useFinance = create<FinanceState>()(
             ? s.projects.map((p) => (p.id === input.id ? input : p))
             : [...s.projects, input],
         })),
-      deleteProject: (id) => set((s) => ({ projects: s.projects.filter((p) => p.id !== id) })),
-      restoreSnapshot: (snapshot) =>
+      deleteProject: (id) =>
+        set((s) => ({
+          projects: s.projects.filter((p) => p.id !== id),
+          // Payments stay in the ledger; they just stop pointing at a project that is gone.
+          transactions: s.transactions.map((t) => (t.projectId === id ? { ...t, projectId: undefined, planRef: undefined } : t)),
+        })),
+      restoreSnapshot: (snapshot) => {
+        const start: StartMode = snapshot.demo ? "demo" : "own";
+        setDemoClock(start === "demo");
         set({
+          start,
           accounts: snapshot.accounts,
           transactions: snapshot.transactions,
           budgets: snapshot.budgets,
@@ -177,8 +182,9 @@ export const useFinance = create<FinanceState>()(
           month: snapshot.month,
           insightOrder: snapshot.insightOrder?.length ? snapshot.insightOrder : [...INSIGHT_ORDER],
           hiddenInsights: snapshot.hiddenInsights ?? [],
-        }),
-      reset: () => set(fresh()),
+        });
+      },
+      begin: (mode) => set(dataFor(mode)),
     }),
     {
       name: "lumen-budget-v1",
@@ -186,11 +192,15 @@ export const useFinance = create<FinanceState>()(
       skipHydration: true,
       merge: (persisted, current) => {
         const saved = (persisted ?? {}) as Partial<FinanceState>;
+        // Data saved before first-run existed came with the sample data.
+        const start: StartMode = saved.start ?? (saved.transactions ? "demo" : "ask");
+        setDemoClock(start === "demo");
         const order = [...(saved.insightOrder ?? current.insightOrder)];
         for (const id of INSIGHT_ORDER) if (!order.includes(id)) order.push(id);
         return {
           ...current,
           ...saved,
+          start,
           insightOrder: order,
           projects: saved.projects ?? current.projects,
           localeMode: saved.localeMode ?? "auto",
@@ -198,6 +208,7 @@ export const useFinance = create<FinanceState>()(
         };
       },
       partialize: (s) => ({
+        start: s.start,
         accounts: s.accounts,
         transactions: s.transactions,
         budgets: s.budgets,
