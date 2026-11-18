@@ -35,7 +35,7 @@ A goal is either money you are setting aside, or a purchase you pay in parts.
 
 ## Android
 
-The native project is in `android/`. Pushing to GitHub runs `.github/workflows/android.yml` and uploads a debug APK. The web app is the full product. The Android project mirrors the budget screen and does not yet include goals, backup codes, or language switching.
+The native project is in `android/` (Jetpack Compose, Gradle wrapper). GitHub Actions builds it on demand: **Actions -> Android APK -> Run workflow**, then download the `lumen-debug-apk` artifact. Locally: `cd android && ./gradlew assembleDebug`. All Android versions live in `android/gradle/libs.versions.toml`. The web app is the full product; the Android project mirrors the budget screen and does not yet include goals, backup codes, or language switching.
 
 ## Scripts
 

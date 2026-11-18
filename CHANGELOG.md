@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-11-17
+
+- Android: manual-only CI build, Gradle wrapper, AGP 9.4 / Gradle 9.6 / Kotlin 2.4 / Compose 1.12, system-bar insets, no overlapping rows, readable text fields, back button, rotation-safe state, backups off. Code split into `data/` and `ui/`.
+- Repo: removed build output, Grok sandbox tooling and agent docs, unused dependencies, dead code. Added `.gitignore`, `CLAUDE.md`, repomix config, Dependabot.
+
 ## 2026-11-14
 
 - Production pass. Removed unused English-only helpers. Chart labels follow the language. Long labels stay inside their boxes in English and Russian. Ledger, goals, and backup codes are covered by tests. App version is 1.1.0.

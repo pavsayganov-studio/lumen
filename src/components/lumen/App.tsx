@@ -515,7 +515,7 @@ function AccountsScreen({
   onAccount: (id: string) => void;
   onAdd: () => void;
 }) {
-  const { t, locale } = useI18n();
+  const { t } = useI18n();
   const points = balanceSeries(accounts, txns, range, today);
   const total = points[points.length - 1]?.value ?? totalBalance(accounts, txns, today);
   const gain = points.length > 1 ? points[points.length - 1].value - points[0].value : 0;

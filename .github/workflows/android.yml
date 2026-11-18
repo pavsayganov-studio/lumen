@@ -1,44 +1,45 @@
-name: Android
+name: Android APK
 
+# Manual only: Actions tab -> "Android APK" -> Run workflow.
 on:
-  push:
-    paths:
-      - "android/**"
-      - ".github/workflows/android.yml"
-  pull_request:
-    paths:
-      - "android/**"
-      - ".github/workflows/android.yml"
   workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   apk:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: android
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - name: Set up Java
-        uses: actions/setup-java@v4
+      - uses: actions/setup-java@v6
         with:
           distribution: temurin
-          java-version: "17"
+          java-version: "21"
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
+      # Accepts SDK licenses so Gradle can fetch the platform it needs.
+      - uses: android-actions/setup-android@v4
 
-      - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v4
+      - uses: gradle/actions/setup-gradle@v6
         with:
-          gradle-version: "8.11.1"
+          # setup-gradle ignores `defaults.run`; point it at the Gradle build.
+          build-root-directory: android
 
       - name: Assemble debug APK
-        working-directory: android
-        run: gradle assembleDebug --no-daemon
+        run: ./gradlew assembleDebug --stacktrace
 
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
-          name: lumen-debug
+          name: lumen-debug-apk
           path: android/app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
+          retention-days: 14

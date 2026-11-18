@@ -1,0 +1,33 @@
+{
+  "output": {
+    "filePath": "repomix-output.xml",
+    "style": "xml",
+    "fileSummary": false,
+    "directoryStructure": true,
+    "topFilesLength": 0
+  },
+  "ignore": {
+    "useGitignore": true,
+    "useDefaultPatterns": true,
+    "customPatterns": [
+      ".grok/**",
+      ".github/dependabot.yml",
+      "package-lock.json",
+      "src/routeTree.gen.ts",
+      "public/__grok/**",
+      "server/**",
+      "scripts/**",
+      "migrations/**",
+      "src/lib/auth/**",
+      "src/lib/app-data/**",
+      "src/lib/multiplayer/**",
+      "src/lib/og/**",
+      "src/lib/db.ts",
+      "src/lib/env.server.ts",
+      "src/lib/preview-*",
+      "src/components/preview-host-bridge.tsx",
+      "android/gradle/wrapper/**",
+      "android/gradlew*"
+    ]
+  }
+}

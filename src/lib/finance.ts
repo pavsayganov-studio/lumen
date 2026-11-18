@@ -571,10 +571,6 @@ export function sumSpend(txns: Transaction[]) {
   return euros(txns.filter(isSpend).reduce((s, t) => s + cents(t.amount), 0));
 }
 
-export function monthTransactions(txns: Transaction[], key: string) {
-  return txns.filter((t) => inMonth(t, key));
-}
-
 export function postedSpend(txns: Transaction[], key: string, today: string) {
   return txns.filter((t) => inMonth(t, key) && isSpend(t) && t.date <= today);
 }

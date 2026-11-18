@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "deny": [
+      "Read(./node_modules/**)",
+      "Read(./.vercel/**)",
+      "Read(./.output/**)",
+      "Read(./dist/**)",
+      "Read(./package-lock.json)",
+      "Read(./android/.gradle/**)",
+      "Read(./android/**/build/**)",
+      "Read(./repomix-*.xml)"
+    ]
+  }
+}

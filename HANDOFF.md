@@ -33,7 +33,7 @@ Seed goals are `seed-home` and `seed-car`. Those names translate while they are 
 
 ## Android
 
-`android/` plus `.github/workflows/android.yml`. It is behind the web app: no goals, no backup, no i18n.
+`android/` plus `.github/workflows/android.yml` (manual run only). Code: `data/` (model, money format, storage) and `ui/` (theme, components, screens). Versions: `android/gradle/libs.versions.toml`. It is behind the web app: no goals, no backup, no i18n. Expenses added on the phone live in SharedPreferences (`lumen` / `extra`); a budget edit is not persisted across app restarts yet.
 
 ## Checks
 
