@@ -14,7 +14,7 @@ import {
   type ProjectItem,
   type ProjectKind,
 } from "@/lib/finance";
-import { fullDate, projectTitle, useI18n } from "@/lib/i18n";
+import { fullDate, useI18n } from "@/lib/i18n";
 import { useFinance } from "@/lib/store";
 import { ScreenHeader } from "@/components/lumen/screens";
 import { parseMoney } from "@/components/lumen/forms";
@@ -41,7 +41,7 @@ function ProgressBar({ value }: { value: number }) {
 }
 
 export function ProjectsScreen({ onOpen, onClose, onNew }: { onOpen: (id: string) => void; onNew: () => void; onClose: () => void }) {
-  const { t, locale } = useI18n();
+  const { t } = useI18n();
   const projects = useFinance((s) => s.projects);
   const txns = useFinance((s) => s.transactions);
   const today = todayISO();
@@ -69,7 +69,7 @@ export function ProjectsScreen({ onOpen, onClose, onNew }: { onOpen: (id: string
                   <span className="ml-auto">{project.installment ? t("inParts") : t("saveUp")}</span>
                 </span>
                 <span className="mt-1 flex items-center gap-2">
-                  <span className="min-w-0 flex-1 truncate text-lg font-semibold">{projectTitle(locale, project)}</span>
+                  <span className="min-w-0 flex-1 truncate text-lg font-semibold">{project.name}</span>
                   {plan.dueCount > 0 ? <span className="shrink-0 rounded-full bg-danger/20 px-2 py-0.5 text-micro text-danger">{t("due")}</span> : null}
                 </span>
                 <span className="mt-3 block">
@@ -101,7 +101,7 @@ export function ProjectView({ id, go, onClose }: { id: string; go: Go; onClose: 
   const accounts = useFinance((s) => s.accounts);
   if (!project) return null;
   const today = todayISO();
-  const title = projectTitle(locale, project);
+  const title = project.name;
   const plan = projectPlan(project, today, txns);
   const rows = scheduleRows(project, txns, today);
   const mine = txns.filter((tx) => tx.projectId === project.id).sort((a, b) => b.date.localeCompare(a.date));
@@ -251,7 +251,7 @@ export function ProjectEditor({ id, onClose }: { id?: string; onClose: () => voi
   const txns = useFinance((s) => s.transactions);
   const saveProject = useFinance((s) => s.saveProject);
   const deleteProject = useFinance((s) => s.deleteProject);
-  const [name, setName] = useState(existing ? projectTitle(locale, existing) : "");
+  const [name, setName] = useState(existing ? existing.name : "");
   const [kind, setKind] = useState<ProjectKind>(existing?.kind ?? "home");
   const [installment, setInstallment] = useState(existing?.installment ?? false);
   const [target, setTarget] = useState(existing ? money(existing.target) : "");

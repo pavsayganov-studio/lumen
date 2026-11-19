@@ -19,3 +19,20 @@ export type Route =
   | { name: "project-edit"; id?: string };
 
 export type Go = (route: Route) => void;
+
+/** The sections in the bottom bar. */
+export type Tab = "home" | "transactions" | "accounts" | "projects" | "settings";
+
+export const TAB_ROUTE: Record<Tab, Route> = {
+  home: { name: "home" },
+  transactions: { name: "transactions" },
+  accounts: { name: "insight", id: "accounts" },
+  projects: { name: "insight", id: "projects" },
+  settings: { name: "settings" },
+};
+
+/** The bar shows on the five section screens only. Editors and detail screens cover it. */
+export function tabOf(route: Route): Tab | null {
+  if (route.name === "insight") return route.id === "accounts" || route.id === "projects" ? route.id : null;
+  return route.name === "home" || route.name === "transactions" || route.name === "settings" ? route.name : null;
+}

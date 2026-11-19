@@ -50,7 +50,7 @@ export interface Account {
   opening: number;
 }
 
-export interface SeedData {
+export interface LedgerData {
   accounts: Account[];
   transactions: Transaction[];
   budgets: Record<string, number>;
@@ -94,50 +94,7 @@ export interface Project {
   paidBefore?: number;
 }
 
-const MONTH_CENTS: Record<number, number> = {
-  1: 290000,
-  2: 250000,
-  3: 325000,
-  4: 260000,
-  5: 305000,
-  6: 275000,
-  7: 330750,
-  8: 255000,
-  9: 320000,
-  10: 259650,
-};
-
-/** Day-1..6 spend (cents) tuned so November is +19% vs this 3-month average. */
-const EARLY_CENTS: Record<number, number> = {
-  8: 168527,
-  9: 211484,
-  10: 171586,
-};
-
-const WEIGHTS: Record<number, number[]> = {
-  1: [42, 14, 12, 10, 12, 6, 4],
-  2: [36, 18, 10, 14, 10, 8, 4],
-  3: [40, 12, 14, 8, 14, 7, 5],
-  4: [34, 20, 11, 12, 11, 7, 5],
-  5: [44, 15, 10, 9, 10, 8, 4],
-  6: [38, 16, 13, 11, 12, 6, 4],
-  7: [41, 13, 12, 8, 15, 7, 4],
-  8: [35, 19, 11, 13, 10, 8, 4],
-  9: [43, 14, 12, 10, 9, 8, 4],
-  10: [37, 17, 14, 9, 13, 6, 4],
-};
-
 const CAT_IDS: CategoryId[] = CATEGORIES.map((c) => c.id);
-
-const TITLES: Record<CategoryId, [string, string]> = {
-  housing: ["Rent", "Utilities"],
-  savings: ["Retirement Savings", "Savings Account"],
-  transport: ["Transit", "Fuel"],
-  food: ["Groceries", "Dining Out"],
-  shopping: ["Shopping", "Household"],
-  fun: ["Going out", "Subscriptions"],
-  health: ["Pharmacy", "Wellness"],
-};
 
 export function monthKey(year: number, month: number) {
   return `${year}-${String(month).padStart(2, "0")}`;
@@ -152,17 +109,7 @@ export function daysInMonth(year: number, month: number) {
   return new Date(year, month, 0).getDate();
 }
 
-/** The sample data was captured on this day. */
-const DEMO_TODAY = new Date(2026, 10, 6, 12, 0, 0);
-
-let demoClock = false;
-
-/** While sample data is on, "today" stays on its capture day so the November story holds. Real data uses the real date. */
-export function setDemoClock(on: boolean) {
-  demoClock = on;
-}
-
-export function todayISO(now: Date = demoClock ? DEMO_TODAY : new Date()) {
+export function todayISO(now: Date = new Date()) {
   const y = now.getFullYear();
   const m = String(now.getMonth() + 1).padStart(2, "0");
   const d = String(now.getDate()).padStart(2, "0");
@@ -187,15 +134,47 @@ export function euros(c: number) {
   return Math.round(c) / 100;
 }
 
+export type CurrencyId = "EUR" | "USD" | "RUB" | "BYN";
+
+/** Official symbols: € euro, $ US dollar, ₽ Russian ruble, Br Belarusian ruble. Amounts are never converted. */
+export const CURRENCIES: Record<CurrencyId, { symbol: string; before: boolean; group: string; decimal: string }> = {
+  EUR: { symbol: "€", before: false, group: ".", decimal: "," },
+  USD: { symbol: "$", before: true, group: ",", decimal: "." },
+  RUB: { symbol: "₽", before: false, group: "\u00a0", decimal: "," },
+  BYN: { symbol: "Br", before: false, group: "\u00a0", decimal: "," },
+};
+
+export const CURRENCY_IDS = Object.keys(CURRENCIES) as CurrencyId[];
+
+let activeCurrency: CurrencyId = "EUR";
+
+/** The store sets this once; formatMoney reads it so call sites stay short. */
+export function setCurrency(id: CurrencyId) {
+  activeCurrency = id;
+}
+
+export function currencySymbol() {
+  return CURRENCIES[activeCurrency].symbol;
+}
+
 export function formatMoney(value: number, digits: 0 | 2 | "auto" = "auto") {
+  const { symbol, before, group, decimal } = CURRENCIES[activeCurrency];
   const neg = value < -0.001;
   const abs = Math.abs(value);
   const whole = Math.abs(abs - Math.round(abs)) < 0.001;
   const d = digits === "auto" ? (whole ? 0 : 2) : digits;
   const [int, frac] = abs.toFixed(d).split(".");
-  const withDots = int.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
-  const num = d === 0 ? withDots : `${withDots},${frac}`;
-  return `${neg ? "−" : ""}${num} €`;
+  const grouped = int.replace(/\B(?=(\d{3})+(?!\d))/g, group);
+  const num = d === 0 ? grouped : `${grouped}${decimal}${frac}`;
+  return `${neg ? "\u2212" : ""}${before ? `${symbol}${num}` : `${num}\u00a0${symbol}`}`;
+}
+
+/** Chart axis label: 1500 reads as "1,5K €". */
+export function formatCompact(value: number) {
+  if (value < 1000) return formatMoney(value, 0);
+  const { symbol, before, decimal } = CURRENCIES[activeCurrency];
+  const num = `${(value / 1000).toFixed(1).replace(".", decimal)}K`;
+  return before ? `${symbol}${num}` : `${num}\u00a0${symbol}`;
 }
 
 export function formatPct(n: number, signed = true) {
@@ -211,247 +190,8 @@ export function categoryById(id: CategoryId) {
   return CATEGORIES.find((c) => c.id === id)!;
 }
 
-function splitWeighted(total: number, weights: number[]) {
-  const sum = weights.reduce((a, b) => a + b, 0);
-  const parts = weights.map((w) => Math.floor((total * w) / sum));
-  const used = parts.reduce((a, b) => a + b, 0);
-  parts[0] += total - used;
-  return parts;
-}
-
-function iso(year: number, month: number, day: number) {
-  return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-}
-
-const AS_OF = "2026-11-06";
-
-export function buildSeed(): SeedData {
-  const transactions: Transaction[] = [];
-  let n = 1;
-  const nextId = () => `seed-${n++}`;
-
-  const push = (tx: Omit<Transaction, "id">) => {
-    transactions.push({ ...tx, id: nextId() });
-  };
-
-  for (let month = 1; month <= 10; month++) {
-    const total = MONTH_CENTS[month];
-    const parts = splitWeighted(total, WEIGHTS[month]);
-    const earlyBudget = EARLY_CENTS[month] ?? Math.round(total * 0.48);
-    let earlyAssigned = 0;
-    parts.forEach((catCents, idx) => {
-      const cat = CAT_IDS[idx];
-      const isLast = idx === parts.length - 1;
-      let early = isLast
-        ? earlyBudget - earlyAssigned
-        : Math.round((catCents * earlyBudget) / total);
-      early = Math.max(0, Math.min(catCents, early));
-      earlyAssigned += early;
-      const late = catCents - early;
-      if (cat === "savings") {
-        const transfer = Math.min(catCents, Math.round(total * 0.14));
-        const expense = catCents - transfer;
-        if (transfer > 0) {
-          push({
-            title: "Savings Account",
-            flow: "Savings Account",
-            amount: euros(transfer),
-            kind: "transfer",
-            date: iso(2026, month, 4),
-            categoryId: "savings",
-            accountId: "main",
-            toAccountId: "saving",
-          });
-        }
-        if (expense > 0) {
-          push({
-            title: "Retirement Savings",
-            flow: "Retirement Savings",
-            amount: euros(expense),
-            kind: "expense",
-            date: iso(2026, month, 4),
-            categoryId: "savings",
-            accountId: "main",
-          });
-        }
-        return;
-      }
-      if (early > 0) {
-        push({
-          title: TITLES[cat][0],
-          flow: TITLES[cat][0],
-          amount: euros(early),
-          kind: "expense",
-          date: iso(2026, month, 3),
-          categoryId: cat,
-          accountId: "main",
-        });
-      }
-      if (late > 0) {
-        push({
-          title: TITLES[cat][1],
-          flow: TITLES[cat][1],
-          amount: euros(late),
-          kind: "expense",
-          date: iso(2026, month, 18),
-          categoryId: cat,
-          accountId: "main",
-        });
-      }
-    });
-  }
-
-  const november: Omit<Transaction, "id">[] = [
-    { title: "Coffee", flow: "Coffee Shops", amount: 9, kind: "expense", date: "2026-11-01", categoryId: "food", accountId: "main" },
-    { title: "Lunch", flow: "Lunch", amount: 12, kind: "expense", date: "2026-11-01", categoryId: "food", accountId: "main" },
-    { title: "Dinner out", flow: "Dining Out", amount: 22.5, kind: "expense", date: "2026-11-02", categoryId: "food", accountId: "main" },
-    { title: "Gas", flow: "Gas", amount: 30, kind: "expense", date: "2026-11-02", categoryId: "transport", accountId: "main" },
-    { title: "Rent", flow: "Rent", amount: 900, kind: "expense", date: "2026-11-03", categoryId: "housing", accountId: "main" },
-    { title: "Utilities", flow: "Utilities", amount: 100, kind: "expense", date: "2026-11-03", categoryId: "housing", accountId: "main" },
-    { title: "Internet", flow: "Internet", amount: 50, kind: "expense", date: "2026-11-04", categoryId: "housing", accountId: "main" },
-    { title: "Retirement Savings", flow: "Retirement Savings", amount: 350, kind: "expense", date: "2026-11-04", categoryId: "savings", accountId: "main" },
-    { title: "Savings Account", flow: "Savings Account", amount: 300, kind: "transfer", date: "2026-11-04", categoryId: "savings", accountId: "main", toAccountId: "saving" },
-    { title: "Phone Bill", flow: "Phone Bill", amount: 50, kind: "expense", date: "2026-11-05", categoryId: "housing", accountId: "main" },
-    { title: "Investments", flow: "Investments", amount: 110, kind: "expense", date: "2026-11-05", categoryId: "savings", accountId: "main" },
-    { title: "Car Loan", flow: "Car Loan", amount: 250, kind: "expense", date: "2026-11-05", categoryId: "transport", accountId: "main" },
-    { title: "Cappuccino", flow: "Coffee Shops", amount: 4.5, kind: "expense", date: "2026-11-05", categoryId: "food", accountId: "main" },
-    { title: "Car insurance", amount: 90, kind: "expense", date: "2026-11-08", categoryId: "transport", accountId: "main", recurring: true },
-    { title: "Monthly transit pass", amount: 60, kind: "expense", date: "2026-11-10", categoryId: "transport", accountId: "main", recurring: true },
-    { title: "Streaming", amount: 17, kind: "expense", date: "2026-11-23", categoryId: "fun", accountId: "main", recurring: true },
-    { title: "Gym", amount: 39, kind: "expense", date: "2026-11-26", categoryId: "health", accountId: "main", recurring: true },
-    { title: "Groceries", amount: 48, kind: "expense", date: "2026-11-27", categoryId: "food", accountId: "main" },
-    { title: "Cloud storage", amount: 18, kind: "expense", date: "2026-11-28", categoryId: "shopping", accountId: "main", recurring: true },
-    { title: "Dinner reservation", amount: 25, kind: "expense", date: "2026-11-29", categoryId: "food", accountId: "main" },
-  ];
-  november.forEach(push);
-
-  const externalBeforeIncome = transactions
-    .filter((t) => t.kind === "expense" && t.date <= AS_OF)
-    .reduce((s, t) => s + cents(t.amount), 0);
-  const targetEnd = 1669450;
-  const targetStart = 5500;
-  const incomeNeeded = targetEnd - targetStart + externalBeforeIncome;
-  const novIncome = 396000;
-  const histIncome = incomeNeeded - novIncome;
-  const histMonths = 10;
-  const histBase = Math.floor(histIncome / histMonths);
-  let histAssigned = 0;
-  for (let month = 1; month <= 10; month++) {
-    const amt = month === 10 ? histIncome - histAssigned : histBase;
-    histAssigned += amt;
-    push({
-      title: "Salary",
-      amount: euros(amt),
-      kind: "income",
-      date: iso(2026, month, 1),
-      accountId: "main",
-    });
-  }
-  push({
-    title: "Salary",
-    amount: euros(novIncome),
-    kind: "income",
-    date: "2026-11-01",
-    accountId: "main",
-  });
-
-  const accounts: Account[] = [
-    { id: "main", name: "Main", kind: "spending", color: "#4C8DFF", isDefault: true, opening: 0 },
-    { id: "cbc", name: "CBC Banque SA", kind: "spending", color: "#3AD7FF", opening: 0 },
-    { id: "bdb", name: "Banco do Brasil", kind: "spending", color: "#34D399", opening: 0 },
-    { id: "saving", name: "Saving", kind: "saving", color: "#3DDC97", isDefault: true, opening: 0 },
-  ];
-
-  const targets: Record<string, number> = {
-    main: 8807.5,
-    cbc: 55,
-    bdb: 0,
-    saving: 7832,
-  };
-
-  for (const account of accounts) {
-    const deltaCents = transactions
-      .filter((t) => t.date <= AS_OF)
-      .reduce((s, tx) => s + cents(effectOn(tx, account.id)), 0);
-    account.opening = euros(cents(targets[account.id]) - deltaCents);
-  }
-
-  const budgets: Record<string, number> = {};
-  const allocations: SeedData["allocations"] = {};
-  for (let month = 1; month <= 12; month++) {
-    const key = monthKey(2026, month);
-    budgets[key] = 3900;
-  }
-  allocations["2026-11"] = {
-    housing: 1300,
-    savings: 760,
-    transport: 360,
-    food: 148,
-  };
-
-  for (let month = 1; month <= 10; month++) {
-    const key = monthKey(2026, month);
-    const spent = spentByCategory(
-      transactions.filter((t) => t.date.startsWith(key) && t.date <= `${key}-31`),
-    );
-    allocations[key] = spent;
-  }
-
-  return { accounts, transactions, budgets, allocations, projects: seedProjects() };
-}
-
-export function seedProjects(): Project[] {
-  return [
-    {
-      id: "seed-home",
-      name: "Apartment",
-      kind: "home",
-      target: 42000,
-      saved: 18500,
-      monthlySave: 800,
-      installment: false,
-      downPayment: 0,
-      months: 12,
-      apr: 0,
-      start: "2026-12-01",
-    },
-    {
-      id: "seed-car",
-      name: "City car",
-      kind: "car",
-      target: 18000,
-      saved: 4200,
-      monthlySave: 0,
-      installment: true,
-      downPayment: 5000,
-      months: 36,
-      apr: 4.9,
-      start: "2026-12-05",
-    },
-    {
-      id: "seed-trip",
-      name: "Summer trip",
-      kind: "trip",
-      target: 2400,
-      saved: 650,
-      monthlySave: 200,
-      installment: false,
-      downPayment: 0,
-      months: 12,
-      apr: 0,
-      start: "2026-12-01",
-      deadline: "2027-06-30",
-      items: [
-        { id: "flights", title: "Flights", amount: 480, date: "2027-02-10" },
-        { id: "hotel", title: "Hotel", amount: 920, date: "2027-05-20" },
-        { id: "insurance", title: "Travel insurance", amount: 60, date: "2027-05-25" },
-      ],
-    },
-  ];
-}
-
 /** A clean start: two accounts, no budget, no history. */
-export function emptyData(): SeedData {
+export function emptyData(): LedgerData {
   return {
     accounts: [
       { id: "main", name: "Main", kind: "spending", color: "#4C8DFF", isDefault: true, opening: 0 },
@@ -816,9 +556,9 @@ export function trendModel(txns: Transaction[], key: string, today: string) {
     let sum = 0;
     let count = 0;
     for (const pk of prevKeys) {
-      const synthetic = syntheticCumulative(txns, pk, d);
-      if (synthetic == null) continue;
-      sum += synthetic;
+      const cumulative = cumulativeSpend(txns, pk, d);
+      if (cumulative == null) continue;
+      sum += cumulative;
       count++;
     }
     averages.push(count ? Math.round((sum / count) * 100) / 100 : 0);
@@ -831,22 +571,13 @@ export function trendModel(txns: Transaction[], key: string, today: string) {
   return { days: dim, current, averages, cutoff, nowValue, avgValue, pct };
 }
 
-function syntheticCumulative(txns: Transaction[], key: string, day: number) {
+/** Spend in a past month up to a day, spread evenly over the month. Null when the month has no records. */
+function cumulativeSpend(txns: Transaction[], key: string, day: number) {
+  if (!txns.some((t) => inMonth(t, key))) return null;
   const { year, month } = parseMonth(key);
-  if (year !== 2026 || month < 1 || month > 10) {
-    const total = sumSpend(txns.filter((t) => inMonth(t, key) && isSpend(t)));
-    if (!txns.some((t) => inMonth(t, key))) return null;
-    const dim = daysInMonth(year, month);
-    const clamped = Math.min(day, dim);
-    return total * (clamped / dim);
-  }
-  const total = MONTH_CENTS[month];
-  const early = EARLY_CENTS[month] ?? Math.round(total * 0.48);
   const dim = daysInMonth(year, month);
-  const d = Math.min(day, dim);
-  if (d <= 6) return (early * d) / 6 / 100;
-  const late = total - early;
-  return (early + (late * (d - 6)) / (dim - 6)) / 100;
+  const total = sumSpend(txns.filter((t) => inMonth(t, key) && isSpend(t)));
+  return total * (Math.min(day, dim) / dim);
 }
 
 export function yearModel(txns: Transaction[], year: number, throughMonth: number) {
@@ -855,7 +586,6 @@ export function yearModel(txns: Transaction[], year: number, throughMonth: numbe
     if (m > throughMonth && year >= new Date().getFullYear()) break;
     const key = monthKey(year, m);
     const mine = txns.filter((t) => inMonth(t, key) && isSpend(t) && t.date <= todayISO());
-    if (year === 2026 && m > 11) break;
     const parts = {} as Record<CategoryId, number>;
     for (const c of CAT_IDS) parts[c] = 0;
     for (const tx of mine) {
@@ -864,21 +594,19 @@ export function yearModel(txns: Transaction[], year: number, throughMonth: numbe
     }
     for (const c of CAT_IDS) parts[c] = euros(cents(parts[c]));
     const total = euros(CAT_IDS.reduce((s, c) => s + cents(parts[c]), 0));
-    if (year === 2026 && m > 11) continue;
     rows.push({ month: m, label: MONTH_SHORT[m - 1], total, parts });
   }
-  const visible = rows.filter((r) => r.month <= (year === 2026 ? 11 : 12));
-  const total = euros(visible.reduce((s, r) => s + cents(r.total), 0));
-  const avg = visible.length ? total / visible.length : 0;
-  const peak = visible.reduce((best, r) => (r.total > best.total ? r : best), visible[0] ?? { total: 0, label: "—", month: 1, parts: {} as Record<CategoryId, number> });
-  const last = visible.slice(-3).map((r) => r.total);
+  const total = euros(rows.reduce((s, r) => s + cents(r.total), 0));
+  const avg = rows.length ? total / rows.length : 0;
+  const peak = rows.reduce((best, r) => (r.total > best.total ? r : best), rows[0] ?? { total: 0, label: "—", month: 1, parts: {} as Record<CategoryId, number> });
+  const last = rows.slice(-3).map((r) => r.total);
   let direction: "Increasing" | "Decreasing" | "Steady" = "Steady";
   if (last.length >= 2 && last[0] > 0) {
     const delta = (last[last.length - 1] - last[0]) / last[0];
     if (delta > 0.03) direction = "Increasing";
     else if (delta < -0.03) direction = "Decreasing";
   }
-  return { rows: visible, total, avg, peak, direction };
+  return { rows: rows, total, avg, peak, direction };
 }
 
 export function accountBalance(account: Account, txns: Transaction[], until?: string) {
@@ -995,47 +723,4 @@ export function projectRecurring(txns: Transaction[], untilKey: string) {
 export function formatSigned(value: number, digits: 0 | 2 | "auto" = "auto") {
   if (value > 0.001) return `+${formatMoney(value, digits)}`;
   return formatMoney(value, digits);
-}
-
-export function auditSeed() {
-  const seed = buildSeed();
-  const today = "2026-11-06";
-  const key = "2026-11";
-  const posted = postedSpend(seed.transactions, key, today);
-  const upcoming = upcomingSpend(seed.transactions, key, today);
-  const spent = sumSpend(posted);
-  const byCat = spentByCategory(posted);
-  const alloc = allocatedTotal(allocationMap(seed.allocations, key));
-  const budget = budgetOf(seed.budgets, key);
-  const trend = trendModel(seed.transactions, key, today);
-  const year = yearModel(seed.transactions, 2026, 11);
-  const balances = Object.fromEntries(
-    seed.accounts.map((a) => [a.id, accountBalance(a, seed.transactions, today)]),
-  );
-  const net = monthNet(seed.accounts, seed.transactions, key, today);
-  const save = savingStats(seed.transactions, key, today);
-  const total = totalBalance(seed.accounts, seed.transactions, today);
-  const series = balanceSeries(seed.accounts, seed.transactions, "1Y", today);
-  return {
-    budget,
-    alloc,
-    available: euros(cents(budget) - cents(alloc)),
-    spent,
-    byCat,
-    upcoming: sumSpend(upcoming),
-    trendPct: Math.round(trend.pct),
-    trendNow: trend.nowValue,
-    yearTotal: year.total,
-    yearAvg: year.avg,
-    peak: year.peak.total,
-    peakLabel: year.peak.label,
-    direction: year.direction,
-    balances,
-    total,
-    net,
-    saveRate: Math.round(save.rate),
-    seriesEnds: series[series.length - 1]?.value,
-    seriesStart: series[0]?.value,
-    gain: series.length ? series[series.length - 1].value - series[0].value : 0,
-  };
 }

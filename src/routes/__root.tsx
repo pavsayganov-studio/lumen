@@ -12,6 +12,13 @@ export const Route = createRootRoute({
       { name: "description", content: "See what's left to spend. A calm monthly budget." },
       { name: "theme-color", content: "#070B12" },
     ],
+    // Sets the theme before first paint so Light never flashes Dark. useApplyTheme keeps it in step.
+    scripts: [
+      {
+        children:
+          'try{var m=(JSON.parse(localStorage.getItem("lumen-budget-v1")||"{}").state||{}).themeMode||"auto";document.documentElement.dataset.theme=m==="light"||(m==="auto"&&matchMedia("(prefers-color-scheme: light)").matches)?"light":"dark"}catch(e){}',
+      },
+    ],
     links: [
       { rel: "icon", type: "image/svg+xml", href: "/favicon.svg" },
       { rel: "stylesheet", href: appCss },

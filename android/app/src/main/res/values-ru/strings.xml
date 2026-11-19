@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="nav_home">Главная</string>
+    <string name="nav_history">История</string>
+    <string name="nav_add">Добавить</string>
+    <string name="nav_insights">Обзор</string>
+    <string name="nav_settings">Настройки</string>
+    <string name="close">Закрыть</string>
+    <string name="save">Сохранить</string>
+    <string name="delete">Удалить</string>
+    <string name="budget">Бюджет</string>
+    <string name="spent">Потрачено</string>
+    <string name="available">Свободно</string>
+    <string name="left_to_spend">можно потратить</string>
+    <string name="set_budget">Задайте бюджет на месяц</string>
+    <string name="set_budget_hint">Тогда Lumen покажет, сколько ещё можно потратить.</string>
+    <string name="add_first">Добавьте первый расход</string>
+    <string name="add_first_hint">Всё остаётся на этом телефоне.</string>
+    <string name="recent">Недавние</string>
+    <string name="no_expenses">Расходов пока нет.</string>
+    <string name="new_expense">Новый расход</string>
+    <string name="amount">Сумма</string>
+    <string name="name">Название</string>
+    <string name="save_expense">Сохранить расход</string>
+    <string name="monthly_budget">Бюджет на месяц</string>
+    <string name="total_spending">Всего потрачено</string>
+    <string name="nothing_spent">Пока ничего.</string>
+    <string name="settings_blurb">Деньги остаются на этом телефоне. Мы никуда их не отправляем.</string>
+    <string name="currency">Валюта</string>
+    <string name="currency_help">Меняется только символ. Суммы не пересчитываются.</string>
+    <string name="theme">Оформление</string>
+    <string name="theme_auto">Телефон</string>
+    <string name="theme_light">Светлое</string>
+    <string name="theme_dark">Тёмное</string>
+    <string name="cat_housing">Жильё</string>
+    <string name="cat_savings">Накопления</string>
+    <string name="cat_transport">Транспорт</string>
+    <string name="cat_food">Еда и кафе</string>
+    <string name="cat_shopping">Покупки</string>
+    <string name="cat_fun">Досуг</string>
+    <string name="cat_health">Здоровье</string>
+    <plurals name="days_left">
+        <item quantity="one">ещё %d день</item>
+        <item quantity="few">ещё %d дня</item>
+        <item quantity="many">ещё %d дней</item>
+        <item quantity="other">ещё %d дня</item>
+    </plurals>
+</resources>

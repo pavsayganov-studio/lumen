@@ -44,8 +44,9 @@ import {
   type Transaction,
 } from "@/lib/finance";
 import { useFinance } from "@/lib/store";
-import { accountTitle, catLabel, daysLeftLabel, directionLabel, monthLabel, projectTitle, savingWord, useI18n } from "@/lib/i18n";
-import type { Go, Route } from "@/components/lumen/nav";
+import { useApplyTheme } from "@/lib/theme";
+import { accountTitle, catLabel, daysLeftLabel, directionLabel, monthLabel, savingWord, useI18n } from "@/lib/i18n";
+import { tabOf, type Go, type Route } from "@/components/lumen/nav";
 import {
   BalanceChart,
   BudgetRing,
@@ -69,7 +70,7 @@ import {
 } from "@/components/lumen/forms";
 import { TxnList } from "@/components/lumen/lists";
 import { ProjectEditor, ProjectView, ProjectsScreen } from "@/components/lumen/projects";
-import { Welcome } from "@/components/lumen/welcome";
+import { NavBar } from "@/components/lumen/navbar";
 
 const RANGES: RangeId[] = ["1W", "1M", "3M", "6M", "1Y", "All"];
 
@@ -92,7 +93,6 @@ export function App() {
   useEffect(() => {
     void Promise.resolve(useFinance.persist.rehydrate()).then(() => setReady(true));
   }, []);
-  const start = useFinance((s) => s.start);
   const month = useFinance((s) => s.month);
   const raw = useFinance((s) => s.transactions);
   const accounts = useFinance((s) => s.accounts);
@@ -105,6 +105,11 @@ export function App() {
   const txns = useMemo(() => projectRecurring(raw, horizon), [raw, horizon]);
   const visible = order.filter((id) => !hidden.includes(id));
   const { t, locale } = useI18n();
+  const themeMode = useFinance((s) => s.themeMode);
+  // Re-render everything when the currency changes: formatMoney reads it from the ledger module.
+  useFinance((s) => s.currency);
+  useApplyTheme(themeMode);
+  const tab = tabOf(route);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -131,81 +136,83 @@ export function App() {
 
   return (
     <div className="studio">
-      <div className="phone">
-        {start === "ask" ? <Welcome /> : null}
-        {route.name === "home" ? (
-          <>
+      <div className="phone flex flex-col">
+        <div className="relative min-h-0 flex-1">
+          {route.name === "home" ? (
             <div className="phone-scroll home-bg">
               <Home txns={txns} today={today} accounts={accounts} visible={visible} go={setRoute} />
             </div>
+          ) : null}
+          {route.name === "home" || route.name === "transactions" ? (
             <button type="button" className="add-pill" onClick={() => setRoute({ name: "edit" })}>
               {t("add")}
             </button>
-          </>
-        ) : null}
+          ) : null}
 
-        {route.name === "insight" ? (
-          <InsightPager
-            id={route.id}
-            index={Math.max(0, visible.indexOf(route.id))}
-            count={visible.length}
-            scope={scope}
-            setScope={setScope}
-            range={range}
-            setRange={setRange}
-            txns={txns}
-            today={today}
-            accounts={accounts}
-            onClose={() => setRoute({ name: "home" })}
-            onPrev={() => goInsight(-1)}
-            onNext={() => goInsight(1)}
-            go={setRoute}
-          />
-        ) : null}
+          {route.name === "insight" ? (
+            <InsightPager
+              id={route.id}
+              index={Math.max(0, visible.indexOf(route.id))}
+              count={visible.length}
+              scope={scope}
+              setScope={setScope}
+              range={range}
+              setRange={setRange}
+              txns={txns}
+              today={today}
+              accounts={accounts}
+              onClose={() => setRoute({ name: "home" })}
+              onPrev={() => goInsight(-1)}
+              onNext={() => goInsight(1)}
+              go={setRoute}
+            />
+          ) : null}
 
-        {route.name === "months" ? <MonthPicker month={month} onClose={() => setRoute({ name: "home" })} /> : null}
-        {route.name === "budget" ? <BudgetScreen onClose={() => setRoute({ name: "home" })} /> : null}
-        {route.name === "settings" ? <SettingsScreen onClose={() => setRoute({ name: "home" })} /> : null}
-        {route.name === "insights" ? <InsightsEditor onClose={() => setRoute({ name: "home" })} /> : null}
-        {route.name === "edit" ? (
-          <TransactionEditor
-            key={route.id ?? "new"}
-            id={route.id}
-            date={route.date}
-            seed={txns.find((t) => t.id === route.id)}
-            draft={route.draft}
-            onClose={() => setRoute({ name: "home" })}
-          />
-        ) : null}
-        {route.name === "transactions" ? (
-          <TransactionsScreen txns={txns} onClose={() => setRoute({ name: "home" })} onOpen={(id) => setRoute({ name: "edit", id })} />
-        ) : null}
-        {route.name === "category" ? (
-          <CategoryScreen
-            id={route.id}
-            scope={route.scope}
-            txns={txns}
-            onClose={() => setRoute({ name: "insight", id: "top" })}
-            onOpen={(id) => setRoute({ name: "edit", id })}
-          />
-        ) : null}
-        {route.name === "account" ? (
-          <AccountScreen id={route.id} txns={txns} onClose={() => setRoute({ name: "insight", id: "accounts" })} onOpen={(id) => setRoute({ name: "edit", id })} />
-        ) : null}
-        {route.name === "add-account" ? <AddAccountScreen onClose={() => setRoute({ name: "insight", id: "accounts" })} /> : null}
-        {route.name === "project" ? <ProjectView id={route.id} go={setRoute} onClose={() => setRoute({ name: "insight", id: "projects" })} /> : null}
-        {route.name === "project-edit" ? (
-          <ProjectEditor
-            key={route.id ?? "new"}
-            id={route.id}
-            onClose={() => setRoute(route.id ? { name: "project", id: route.id } : { name: "insight", id: "projects" })}
-          />
-        ) : null}
-        <span className="sr-only">
-          {monthLabel(locale, month)} {formatMoney(budgetOf(budgets, month))} {formatMoney(allocatedTotal(allocationMap(allocations, month)))}
-        </span>
+          {route.name === "months" ? <MonthPicker month={month} onClose={() => setRoute({ name: "home" })} /> : null}
+          {route.name === "budget" ? <BudgetScreen onClose={() => setRoute({ name: "home" })} /> : null}
+          {route.name === "settings" ? <SettingsScreen onClose={() => setRoute({ name: "home" })} /> : null}
+          {route.name === "insights" ? <InsightsEditor onClose={() => setRoute({ name: "home" })} /> : null}
+          {route.name === "edit" ? (
+            <TransactionEditor
+              key={route.id ?? "new"}
+              id={route.id}
+              date={route.date}
+              seed={txns.find((t) => t.id === route.id)}
+              draft={route.draft}
+              onClose={() => setRoute({ name: "home" })}
+            />
+          ) : null}
+          {route.name === "transactions" ? (
+            <TransactionsScreen txns={txns} onClose={() => setRoute({ name: "home" })} onOpen={(id) => setRoute({ name: "edit", id })} />
+          ) : null}
+          {route.name === "category" ? (
+            <CategoryScreen
+              id={route.id}
+              scope={route.scope}
+              txns={txns}
+              onClose={() => setRoute({ name: "insight", id: "top" })}
+              onOpen={(id) => setRoute({ name: "edit", id })}
+            />
+          ) : null}
+          {route.name === "account" ? (
+            <AccountScreen id={route.id} txns={txns} onClose={() => setRoute({ name: "insight", id: "accounts" })} onOpen={(id) => setRoute({ name: "edit", id })} />
+          ) : null}
+          {route.name === "add-account" ? <AddAccountScreen onClose={() => setRoute({ name: "insight", id: "accounts" })} /> : null}
+          {route.name === "project" ? <ProjectView id={route.id} go={setRoute} onClose={() => setRoute({ name: "insight", id: "projects" })} /> : null}
+          {route.name === "project-edit" ? (
+            <ProjectEditor
+              key={route.id ?? "new"}
+              id={route.id}
+              onClose={() => setRoute(route.id ? { name: "project", id: route.id } : { name: "insight", id: "projects" })}
+            />
+          ) : null}
+          <span className="sr-only">
+            {monthLabel(locale, month)} {formatMoney(budgetOf(budgets, month))} {formatMoney(allocatedTotal(allocationMap(allocations, month)))}
+          </span>
+        </div>
+        {tab ? <NavBar tab={tab} go={setRoute} /> : null}
       </div>
-      <Toaster theme="dark" position="top-center" />
+      <Toaster theme={themeMode === "auto" ? "system" : themeMode} position="top-center" />
     </div>
   );
 }
@@ -240,7 +247,7 @@ function Home({
   const save = savingStats(txns, month, today);
   const projects = useFinance((s) => s.projects);
   const { t, locale } = useI18n();
-  const start = useFinance((s) => s.start);
+  const hasTransactions = useFinance((s) => s.transactions.length > 0);
   const bills = planBills(projects, month, today, txns, defaultSpendingId(accounts));
   const upcomingAll = [...upcoming, ...bills].sort((a, b) => a.date.localeCompare(b.date) || a.amount - b.amount);
   const upcomingTotalAll = upcomingAll.reduce((s, t) => s + t.amount, 0);
@@ -272,15 +279,16 @@ function Home({
         </button>
       </div>
 
-      {start === "demo" ? (
-        <button type="button" className="mt-3 w-full rounded-2xl bg-white/10 px-4 py-3 text-left text-sm text-muted" onClick={() => go({ name: "settings" })}>
-          {t("demoBanner")}
-        </button>
-      ) : null}
       {budget === 0 ? (
         <button type="button" className="sheet-card mt-3 w-full px-4 py-3 text-left" onClick={() => go({ name: "budget" })}>
           <span className="block font-semibold">{t("setBudgetFirst")}</span>
           <span className="block text-sm text-muted">{t("setBudgetHint")}</span>
+        </button>
+      ) : null}
+      {!hasTransactions ? (
+        <button type="button" className="sheet-card mt-3 w-full px-4 py-3 text-left" onClick={() => go({ name: "edit" })}>
+          <span className="block font-semibold">{t("addFirst")}</span>
+          <span className="block text-sm text-muted">{t("addFirstHint")}</span>
         </button>
       ) : null}
 
@@ -333,7 +341,7 @@ function Home({
                 <>
                   <CardLabel icon={<PieChart size={15} />} label={t("top")} />
                   <p className="mt-2 text-3xl font-semibold tracking-tight">{top ? formatMoney(top.value) : "—"}</p>
-                  <MiniDonut slices={slices.length ? slices : [{ value: 1, color: "rgba(255,255,255,0.08)" }]} />
+                  <MiniDonut slices={slices.length ? slices : [{ value: 1, color: "color-mix(in oklab, var(--color-white) 8%, transparent)" }]} />
                   <Footer dot={top?.color} label={top ? catLabel(locale, top.id) : t("noSpending")} />
                 </>
               ) : null}
@@ -378,7 +386,7 @@ function Home({
                   <span className="mt-3 block h-2 overflow-hidden rounded-full bg-white/10">
                     <span className="block h-full rounded-full bg-[#f6c445]" style={{ width: `${Math.round((leadPlan?.progress ?? 0) * 100)}%` }} />
                   </span>
-                  <Footer label={lead ? projectTitle(locale, lead) : t("addGoal")} />
+                  <Footer label={lead ? lead.name : t("addGoal")} />
                 </>
               ) : null}
             </button>

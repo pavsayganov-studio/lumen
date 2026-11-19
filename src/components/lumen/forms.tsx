@@ -4,6 +4,8 @@ import { toast } from "sonner";
 import { BackupError, exportBackup, importBackup, type Snapshot } from "@/lib/backup";
 import {
   CATEGORIES,
+  CURRENCIES,
+  CURRENCY_IDS,
   budgetOf,
   defaultSavingId,
   defaultSpendingId,
@@ -15,14 +17,14 @@ import {
   type Transaction,
   type TxKind,
 } from "@/lib/finance";
-import { accountTitle, catLabel, monthLabel, monthShortLabel, projectTitle, useI18n } from "@/lib/i18n";
-import { useFinance, type LocaleMode } from "@/lib/store";
+import { accountTitle, catLabel, monthLabel, monthShortLabel, useI18n } from "@/lib/i18n";
+import { useFinance, type LocaleMode, type ThemeMode } from "@/lib/store";
 import { ScreenHeader } from "@/components/lumen/screens";
 import { TxnList } from "@/components/lumen/lists";
 import type { TxDraft } from "@/components/lumen/nav";
 
 export function parseMoney(raw: string) {
-  let s = raw.trim().replace(/[€\s]/g, "");
+  let s = raw.replace(/[^\d.,-]/g, "");
   if (!s) return Number.NaN;
   if (s.includes(",") && s.includes(".")) s = s.replace(/\./g, "").replace(",", ".");
   else if (s.includes(",")) s = s.replace(",", ".");
@@ -127,26 +129,59 @@ export function BudgetScreen({ onClose }: { onClose: () => void }) {
   );
 }
 
+/** A row of exclusive choices, one highlighted. */
+function Choices<T extends string>({
+  value,
+  options,
+  onChange,
+  columns,
+}: {
+  value: T;
+  options: { id: T; label: string }[];
+  onChange: (id: T) => void;
+  columns: string;
+}) {
+  return (
+    <div className={`mt-3 grid gap-2 text-sm ${columns}`}>
+      {options.map((o) => (
+        <button
+          key={o.id}
+          type="button"
+          data-on={value === o.id}
+          aria-pressed={value === o.id}
+          className={`rounded-2xl px-2 py-3 font-semibold ${value === o.id ? "bg-cyan text-bg" : "bg-white/5"}`}
+          onClick={() => onChange(o.id)}
+        >
+          {o.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 export function SettingsScreen({ onClose }: { onClose: () => void }) {
-  const begin = useFinance((s) => s.begin);
-  const start = useFinance((s) => s.start);
+  const erase = useFinance((s) => s.erase);
   const restoreSnapshot = useFinance((s) => s.restoreSnapshot);
   const mode = useFinance((s) => s.localeMode);
   const setLocaleMode = useFinance((s) => s.setLocaleMode);
+  const themeMode = useFinance((s) => s.themeMode);
+  const setThemeMode = useFinance((s) => s.setThemeMode);
+  const currency = useFinance((s) => s.currency);
+  const setCurrency = useFinance((s) => s.setCurrency);
   const { t } = useI18n();
   const [phrase, setPhrase] = useState("");
   const [code, setCode] = useState("");
   const [paste, setPaste] = useState("");
   const [armed, setArmed] = useState(false);
-  const [dataArmed, setDataArmed] = useState<"demo" | "own" | null>(null);
+  const [eraseArmed, setEraseArmed] = useState(false);
 
-  const startOver = (mode: "demo" | "own") => {
-    if (dataArmed !== mode) {
-      setDataArmed(mode);
+  const eraseAll = () => {
+    if (!eraseArmed) {
+      setEraseArmed(true);
       return;
     }
-    begin(mode);
-    toast(t(mode === "demo" ? "demoLoaded" : "erased"));
+    erase();
+    toast(t("erased"));
     onClose();
   };
 
@@ -162,7 +197,6 @@ export function SettingsScreen({ onClose }: { onClose: () => void }) {
       month: state.month,
       insightOrder: state.insightOrder,
       hiddenInsights: state.hiddenInsights,
-      demo: state.start === "demo",
     };
     const text = await exportBackup(snapshot, phrase);
     setCode(text);
@@ -197,19 +231,41 @@ export function SettingsScreen({ onClose }: { onClose: () => void }) {
         <section>
           <h2 className="font-semibold">{t("language")}</h2>
           <p className="mt-1 text-sm text-muted">{t("languageHelp")}</p>
-          <div className="mt-3 grid grid-cols-3 gap-2 text-sm">
-            {(["auto", "en", "ru"] as LocaleMode[]).map((id) => (
-              <button
-                key={id}
-                type="button"
-                data-on={mode === id}
-                className={`rounded-2xl px-2 py-3 font-semibold ${mode === id ? "bg-cyan text-bg" : "bg-white/5"}`}
-                onClick={() => setLocaleMode(id)}
-              >
-                {t(id === "auto" ? "langAuto" : id === "en" ? "langEn" : "langRu")}
-              </button>
-            ))}
-          </div>
+          <Choices<LocaleMode>
+            value={mode}
+            columns="grid-cols-2"
+            onChange={setLocaleMode}
+            options={[
+              { id: "auto", label: t("langAuto") },
+              { id: "en", label: t("langEn") },
+              { id: "ru", label: t("langRu") },
+              { id: "be", label: t("langBe") },
+            ]}
+          />
+        </section>
+        <section>
+          <h2 className="font-semibold">{t("theme")}</h2>
+          <p className="mt-1 text-sm text-muted">{t("themeHelp")}</p>
+          <Choices<ThemeMode>
+            value={themeMode}
+            columns="grid-cols-3"
+            onChange={setThemeMode}
+            options={[
+              { id: "auto", label: t("langAuto") },
+              { id: "light", label: t("themeLight") },
+              { id: "dark", label: t("themeDark") },
+            ]}
+          />
+        </section>
+        <section>
+          <h2 className="font-semibold">{t("currency")}</h2>
+          <p className="mt-1 text-sm text-muted">{t("currencyHelp")}</p>
+          <Choices
+            value={currency}
+            columns="grid-cols-4"
+            onChange={setCurrency}
+            options={CURRENCY_IDS.map((id) => ({ id, label: `${CURRENCIES[id].symbol} ${id}` }))}
+          />
         </section>
         <section className="sheet-card space-y-3 p-4">
           <h2 className="font-semibold">{t("backup")}</h2>
@@ -246,13 +302,8 @@ export function SettingsScreen({ onClose }: { onClose: () => void }) {
         </section>
         <section className="space-y-3">
           <h2 className="font-semibold">{t("dataHeading")}</h2>
-          {start !== "demo" ? (
-            <button type="button" className="w-full rounded-2xl bg-white/10 py-4 font-semibold" onClick={() => startOver("demo")}>
-              {dataArmed === "demo" ? t("tapAgain") : t("loadDemo")}
-            </button>
-          ) : null}
-          <button type="button" className="w-full rounded-2xl bg-white/10 py-4 font-semibold text-danger" onClick={() => startOver("own")}>
-            {dataArmed === "own" ? t("tapAgain") : t("eraseAll")}
+          <button type="button" className="w-full rounded-2xl bg-white/10 py-4 font-semibold text-danger" onClick={eraseAll}>
+            {eraseArmed ? t("tapAgain") : t("eraseAll")}
           </button>
         </section>
       </div>
@@ -457,7 +508,7 @@ export function TransactionEditor({
               <option value="">{t("noProject")}</option>
               {projects.map((p) => (
                 <option key={p.id} value={p.id}>
-                  {projectTitle(locale, p)}
+                  {p.name}
                 </option>
               ))}
             </select>

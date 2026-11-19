@@ -1,0 +1,65 @@
+name: Android release
+
+# Push a tag like v0.1.0 (it must equal v + versionName in android/app/build.gradle.kts).
+# Builds a signed APK and attaches it to a GitHub release.
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: android
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Tag must match versionName
+        run: |
+          version=$(sed -n 's/.*versionName = "\([^"]*\)".*/\1/p' app/build.gradle.kts)
+          test "v$version" = "$GITHUB_REF_NAME" || { echo "Tag $GITHUB_REF_NAME does not match versionName $version"; exit 1; }
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - uses: android-actions/setup-android@v4
+
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          build-root-directory: android
+
+      - name: Restore keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          test -n "$KEYSTORE_BASE64" || { echo "Secret ANDROID_KEYSTORE_BASE64 is missing"; exit 1; }
+          echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/lumen-release.jks"
+
+      - name: Assemble signed release APK
+        env:
+          LUMEN_KEYSTORE: ${{ runner.temp }}/lumen-release.jks
+          LUMEN_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          LUMEN_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          LUMEN_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: ./gradlew assembleRelease --stacktrace
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          apk="lumen-$GITHUB_REF_NAME.apk"
+          cp app/build/outputs/apk/release/*.apk "$apk"
+          sha256sum "$apk" > "$apk.sha256"
+          gh release create "$GITHUB_REF_NAME" "$apk" "$apk.sha256" --title "Lumen $GITHUB_REF_NAME" --generate-notes --verify-tag

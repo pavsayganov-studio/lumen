@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import {
   CATEGORIES,
   categoryById,
+  currencySymbol,
   formatMoney,
   formatPct,
   formatSigned,
@@ -15,7 +16,7 @@ import {
   type Transaction,
 } from "@/lib/finance";
 import { Sankey, StackedMonths, TrendChart, TxnAvatar } from "@/components/lumen/widgets";
-import { catLabel, directionLabel, fullDate, monthLabel, monthShortLabel, projectTitle, savingWord, trendStamp, useI18n, weekHead } from "@/lib/i18n";
+import { catLabel, directionLabel, fullDate, monthLabel, monthShortLabel, savingWord, trendStamp, useI18n, weekHead } from "@/lib/i18n";
 import { useFinance } from "@/lib/store";
 
 export function ScreenHeader({
@@ -107,7 +108,7 @@ export function FlowScreen({
   today: string;
   onClose: () => void;
 }) {
-  const [mode, setMode] = useState<"eur" | "pct">("eur");
+  const [mode, setMode] = useState<"amount" | "pct">("amount");
   const { t, locale } = useI18n();
   const posted = txns.filter((t) => t.date.startsWith(month) && t.date <= today);
   const links = moneyFlow(posted).map((link) => ({ ...link, source: catLabel(locale, link.categoryId) }));
@@ -140,8 +141,8 @@ export function FlowScreen({
       <div className="relative mt-4 rounded-3xl bg-black/15 p-3 ring-1 ring-white/10">
         <div className="mb-2 flex justify-end">
           <div className="segmented text-sm">
-            <button type="button" data-on={mode === "eur"} onClick={() => setMode("eur")}>
-              €
+            <button type="button" data-on={mode === "amount"} onClick={() => setMode("amount")}>
+              {currencySymbol()}
             </button>
             <button type="button" data-on={mode === "pct"} onClick={() => setMode("pct")}>
               %
@@ -387,7 +388,7 @@ function GaugeBig({ pct }: { pct: number }) {
   const cy = 120 - r * Math.sin(a);
   return (
     <svg viewBox="0 0 240 140" className="w-full" aria-hidden>
-      <path d="M24 120 A96 96 0 0 1 216 120" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="14" strokeLinecap="round" />
+      <path d="M24 120 A96 96 0 0 1 216 120" fill="none" stroke="color-mix(in oklab, var(--color-white) 10%, transparent)" strokeWidth="14" strokeLinecap="round" />
       <path
         d="M24 120 A96 96 0 0 1 216 120"
         fill="none"
@@ -470,7 +471,7 @@ export function UpcomingScreen({
                 >
                   {day}
                 </span>
-                {byDay.has(day) ? <span className="text-micro text-cyan">{Math.round(byDay.get(day)!)} €</span> : null}
+                {byDay.has(day) ? <span className="text-micro text-cyan">{formatMoney(Math.round(byDay.get(day)!), 0)}</span> : null}
               </>
             ) : null}
           </div>
@@ -489,9 +490,9 @@ export function UpcomingScreen({
                   <button key={tx.id} type="button" className="txn w-full text-left" onClick={() => onOpen(tx)}>
                     <TxnAvatar title={tx.title} color={cat?.color ?? "var(--color-muted)"} />
                     <span className="min-w-0 flex-1">
-                      <span className="block truncate font-medium">{project && tx.recurring ? projectTitle(locale, project) : tx.title}</span>
+                      <span className="block truncate font-medium">{project && tx.recurring ? project.name : tx.title}</span>
                       <span className="flex min-w-0 items-center gap-1 truncate text-sm text-muted">
-                        {project && !tx.recurring ? projectTitle(locale, project) : tx.recurring ? t("monthly") : cat ? catLabel(locale, cat.id) : ""}
+                        {project && !tx.recurring ? project.name : tx.recurring ? t("monthly") : cat ? catLabel(locale, cat.id) : ""}
                         {tx.recurring ? <Repeat size={12} /> : null}
                         {due ? <span className="ml-1 shrink-0 text-micro text-danger">{t("due")}</span> : null}
                       </span>

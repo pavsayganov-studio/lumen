@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Lumen mark: a budget ring with a cyan arc, an orange saving segment and a spark of light.
+     Everything sits inside the 66dp safe zone of the 108dp adaptive canvas. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path android:pathData="M72,54 A18,18 0 1 1 36,54 A18,18 0 1 1 72,54 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:type="radial"
+                android:centerX="54"
+                android:centerY="54"
+                android:gradientRadius="18">
+                <item android:color="#663AD7FF" android:offset="0" />
+                <item android:color="#003AD7FF" android:offset="1" />
+            </gradient>
+        </aapt:attr>
+    </path>
+    <path
+        android:pathData="M30,54 A24,24 0 1 1 78,54 A24,24 0 1 1 30,54"
+        android:strokeColor="#333AD7FF"
+        android:strokeWidth="7" />
+    <path
+        android:pathData="M35.62,69.43 A24,24 0 1 1 74.78,66"
+        android:strokeWidth="7"
+        android:strokeLineCap="round">
+        <aapt:attr name="android:strokeColor">
+            <gradient
+                android:type="linear"
+                android:startX="30"
+                android:startY="78"
+                android:endX="78"
+                android:endY="30">
+                <item android:color="#FF8EEBFF" android:offset="0" />
+                <item android:color="#FF1AA4FF" android:offset="1" />
+            </gradient>
+        </aapt:attr>
+    </path>
+    <path
+        android:pathData="M70.97,70.97 A24,24 0 0 1 56.09,77.91"
+        android:strokeColor="#FFFF8A3D"
+        android:strokeWidth="7"
+        android:strokeLineCap="round" />
+    <path
+        android:fillColor="#FFE9FBFF"
+        android:pathData="M54,43 Q54,54 65,54 Q54,54 54,65 Q54,54 43,54 Q54,54 54,43 Z" />
+</vector>

@@ -3,7 +3,6 @@ package app.lumen.ui
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -30,17 +29,41 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import app.lumen.R
+import app.lumen.data.formatMoney
 import kotlin.math.cos
 import kotlin.math.sin
 
+/** Amount in the chosen currency. */
+@Composable
+internal fun money(value: Double, digits: Int? = null): String {
+    val currency = LocalCurrency.current
+    return if (digits == null) formatMoney(value, currency) else formatMoney(value, currency, digits)
+}
+
+@Composable
+internal fun categoryName(id: String): String = stringResource(
+    when (id) {
+        "Housing" -> R.string.cat_housing
+        "Savings" -> R.string.cat_savings
+        "Transportation" -> R.string.cat_transport
+        "Food & Drink" -> R.string.cat_food
+        "Entertainment" -> R.string.cat_fun
+        "Health" -> R.string.cat_health
+        else -> R.string.cat_shopping
+    },
+)
+
 @Composable
 internal fun Heading(text: String, size: TextUnit, modifier: Modifier = Modifier) {
-    Text(text, color = Color.White, fontSize = size, fontWeight = FontWeight.SemiBold, modifier = modifier)
+    Text(text, color = palette.ink, fontSize = size, fontWeight = FontWeight.SemiBold, modifier = modifier)
 }
 
 /** "Close" with a full-size touch target. */
@@ -50,7 +73,7 @@ internal fun CloseLink(onClose: () -> Unit) {
         Modifier.heightIn(min = 48.dp).clickable(onClick = onClose),
         contentAlignment = Alignment.CenterStart,
     ) {
-        Text("Close", color = Cyan)
+        Text(stringResource(R.string.close), color = palette.accent)
     }
 }
 
@@ -60,8 +83,9 @@ internal fun TxRow(
     title: String,
     amount: String,
     subtitle: String? = null,
-    titleColor: Color = Color.White,
-    amountColor: Color = Color.White,
+    titleColor: Color = palette.ink,
+    amountColor: Color = palette.ink,
+    trailing: @Composable () -> Unit = {},
 ) {
     Row(
         Modifier.fillMaxWidth().padding(vertical = 8.dp),
@@ -70,11 +94,12 @@ internal fun TxRow(
         Column(Modifier.weight(1f)) {
             Text(title, color = titleColor, maxLines = 1, overflow = TextOverflow.Ellipsis)
             if (subtitle != null) {
-                Text(subtitle, color = Muted, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(subtitle, color = palette.muted, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
         Spacer(Modifier.width(12.dp))
         Text(amount, color = amountColor, maxLines = 1)
+        trailing()
     }
 }
 
@@ -82,58 +107,77 @@ internal fun TxRow(
 internal fun Stat(label: String, value: String, modifier: Modifier = Modifier, onClick: (() -> Unit)? = null) {
     val tap = if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier
     Column(modifier.then(tap), horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(label, color = Muted, fontSize = 13.sp, maxLines = 1)
-        Text(value, color = Color.White, fontWeight = FontWeight.SemiBold, maxLines = 1)
+        Text(label, color = palette.muted, fontSize = 13.sp, maxLines = 1)
+        Text(value, color = palette.ink, fontWeight = FontWeight.SemiBold, maxLines = 1)
     }
 }
 
+/** A tappable card that asks for the next step. */
 @Composable
-internal fun InsightCard(
-    title: String,
-    value: String,
-    foot: String,
-    colors: List<Color>,
-    modifier: Modifier = Modifier,
-    onClick: () -> Unit,
-) {
+internal fun PromptCard(title: String, hint: String, onClick: () -> Unit) {
     Column(
-        modifier
-            .height(148.dp)
+        Modifier
+            .fillMaxWidth()
+            .padding(top = 12.dp)
             .clip(RoundedCornerShape(22.dp))
-            .background(Brush.verticalGradient(colors))
+            .background(palette.ink.copy(alpha = 0.06f))
             .clickable(onClick = onClick)
             .padding(14.dp),
-        verticalArrangement = Arrangement.SpaceBetween,
     ) {
-        Text(title, color = Color.White.copy(alpha = 0.8f), fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        Text(value, color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
-        Text(foot, color = Muted, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(title, color = palette.ink, fontWeight = FontWeight.SemiBold)
+        Text(hint, color = palette.muted, fontSize = 13.sp)
+    }
+}
+
+/** One option of an exclusive choice. */
+@Composable
+internal fun Choice(label: String, selected: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    Box(
+        modifier
+            .heightIn(min = 48.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(if (selected) palette.accent else palette.ink.copy(alpha = 0.06f))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 4.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            label,
+            color = if (selected) palette.onAccent else palette.ink,
+            fontWeight = FontWeight.SemiBold,
+            fontSize = 14.sp,
+            maxLines = 1,
+            textAlign = TextAlign.Center,
+        )
     }
 }
 
 @Composable
 internal fun BudgetRing(fraction: Double, amount: String) {
+    val p = palette
     Box(Modifier.fillMaxWidth().height(280.dp), contentAlignment = Alignment.Center) {
         Canvas(Modifier.size(260.dp)) {
             val stroke = 22.dp.toPx()
             val arc = Size(size.width - stroke * 2, size.height - stroke * 2)
             val topLeft = Offset(stroke, stroke)
-            drawArc(Color(0x334878AA), 0f, 360f, false, topLeft, arc, style = Stroke(16.dp.toPx(), cap = StrokeCap.Round))
-            drawArc(
-                brush = Brush.linearGradient(listOf(Color(0xFF7AF0FF), Color(0xFF1AA4FF))),
-                startAngle = 140f,
-                sweepAngle = 360f * fraction.coerceIn(0.0, 1.0).toFloat(),
-                useCenter = false,
-                topLeft = topLeft,
-                size = arc,
-                style = Stroke(stroke, cap = StrokeCap.Round),
-            )
+            drawArc(p.accent.copy(alpha = 0.2f), 0f, 360f, false, topLeft, arc, style = Stroke(16.dp.toPx(), cap = StrokeCap.Round))
+            if (fraction > 0) {
+                drawArc(
+                    brush = Brush.linearGradient(listOf(Color(0xFF7AF0FF), Color(0xFF1AA4FF))),
+                    startAngle = 140f,
+                    sweepAngle = 360f * fraction.coerceIn(0.0, 1.0).toFloat(),
+                    useCenter = false,
+                    topLeft = topLeft,
+                    size = arc,
+                    style = Stroke(stroke, cap = StrokeCap.Round),
+                )
+            }
             val dots = 42
             val radius = size.minDimension / 2 - 48.dp.toPx()
             repeat(dots) { i ->
                 val angle = (i / dots.toFloat()) * Math.PI * 2 - Math.PI / 2
                 drawCircle(
-                    Color(0xB35AAADC),
+                    p.accent.copy(alpha = 0.55f),
                     2.2.dp.toPx(),
                     Offset((size.width / 2 + cos(angle) * radius).toFloat(), (size.height / 2 + sin(angle) * radius).toFloat()),
                 )
@@ -141,21 +185,23 @@ internal fun BudgetRing(fraction: Double, amount: String) {
         }
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Heading(amount, 40.sp)
-            Text("left to spend", color = Muted)
+            Text(stringResource(R.string.left_to_spend), color = p.muted)
         }
     }
 }
 
-/** Scrollable detail page with a Close link and a title. */
+/** Scrollable page with a title. Section screens pass no close action; the bottom bar leaves them. */
 @Composable
-internal fun Detail(title: String, subtitle: String, onClose: () -> Unit, body: @Composable () -> Unit) {
+internal fun Detail(title: String, subtitle: String? = null, onClose: (() -> Unit)? = null, body: @Composable () -> Unit) {
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            CloseLink(onClose)
-            Spacer(Modifier.width(16.dp))
+            if (onClose != null) {
+                CloseLink(onClose)
+                Spacer(Modifier.width(16.dp))
+            }
             Column {
-                Heading(title, 18.sp)
-                Text(subtitle, color = Muted, fontSize = 13.sp)
+                Heading(title, 22.sp)
+                if (subtitle != null) Text(subtitle, color = palette.muted, fontSize = 13.sp)
             }
         }
         Spacer(Modifier.height(20.dp))
@@ -164,12 +210,15 @@ internal fun Detail(title: String, subtitle: String, onClose: () -> Unit, body: 
 }
 
 @Composable
-internal fun fieldColors() = OutlinedTextFieldDefaults.colors(
-    focusedTextColor = Color.White,
-    unfocusedTextColor = Color.White,
-    focusedBorderColor = Cyan,
-    unfocusedBorderColor = Color.White.copy(alpha = 0.2f),
-    focusedLabelColor = Cyan,
-    unfocusedLabelColor = Muted,
-    cursorColor = Cyan,
-)
+internal fun fieldColors(): androidx.compose.material3.TextFieldColors {
+    val p = palette
+    return OutlinedTextFieldDefaults.colors(
+        focusedTextColor = p.ink,
+        unfocusedTextColor = p.ink,
+        focusedBorderColor = p.accent,
+        unfocusedBorderColor = p.ink.copy(alpha = 0.2f),
+        focusedLabelColor = p.accent,
+        unfocusedLabelColor = p.muted,
+        cursorColor = p.accent,
+    )
+}

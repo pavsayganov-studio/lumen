@@ -28,7 +28,7 @@ Prefixes:
 
 ## First launch
 
-Lumen asks once: start with your own data, or explore made-up sample data. A clean start has two accounts (Main, Saving), no budget and no history. Set the monthly budget first; Home reminds you until you do. Settings → Your data can load the sample data or erase everything, each after a second tap.
+Lumen opens empty. Home asks for the monthly budget and a first transaction. A clean start has two accounts (Main, Saving), no budget and no history. Settings → Your data can erase everything, after a second tap. Settings also sets the language (Russian, Belarusian, English), the currency (€, $, ₽, Br; symbol only, no conversion) and the theme (Light, Dark, or follow the phone).
 
 ## Projects
 
@@ -43,7 +43,7 @@ A project is a purchase or a plan: a home, a car, a trip, anything else.
 
 ## Android
 
-The native project is in `android/` (Jetpack Compose, Gradle wrapper). GitHub Actions builds it on demand: **Actions -> Android APK -> Run workflow**, then download the `lumen-debug-apk` artifact. Locally: `cd android && ./gradlew assembleDebug`. All Android versions live in `android/gradle/libs.versions.toml`. The web app is the full product; the Android project mirrors the budget screen and does not yet include goals, backup codes, or language switching.
+The native project is in `android/` (Jetpack Compose, Gradle wrapper). GitHub Actions builds it on Android pull requests and on demand (**Actions -> Android APK -> Run workflow**, artifact `lumen-debug-apk`). A tag such as `v0.1.0` builds the signed APK and attaches it to a GitHub release. Locally: `cd android && ./gradlew assembleDebug`. All Android versions live in `android/gradle/libs.versions.toml`. The web app is the full product; the Android project is a smaller mirror (budget, history, spending by category) and does not yet include projects or backup codes.
 
 ## Scripts
 

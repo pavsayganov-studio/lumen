@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.1.0
+
+- Sample data is gone from web and Android. The app opens empty on the real date; Home asks for a budget and a first transaction. Sample data saved by earlier versions is dropped on load.
+- Light theme (Cloud Dancer) beside Dark, on web and Android. Settings: Auto, Light, Dark.
+- Bottom navigation on both clients. Web: Home, Transactions, Accounts, Projects, Settings. Android: Home, History, Add, Insights, Settings.
+- Currencies: euro, US dollar, Russian ruble, Belarusian ruble, each with its official symbol. Symbol only; amounts are not converted.
+- Belarusian on web and Android. Russian and Belarusian follow the device language, English for all others.
+- New app icon: budget ring with a cyan arc, an orange saving segment and a spark.
+- Trend and yearly charts no longer fill in made-up history or stop at November 2026.
+- Android persists the budget. A signed release APK is published from a version tag.
+
 ## 2026-11-17 (journey review)
 
 - First launch asks for a clean start or sample data. The pinned November clock applies to sample data only; real data uses the real date. A new budget starts at 0 and Home prompts for it. Erasing or loading sample data needs a second tap.

@@ -9,7 +9,7 @@ CLAUDE.md. Read it first, then only the files the task needs.
 
 Product
 - Simple first, powerful second. One clear path per task; no feature without a place in the user journey.
-- First launch: own data or sample data. Sample data pins the clock to 2026-11-06; real data uses the real date.
+- First launch: empty, on the real date. No sample data anywhere.
 - Projects (home, car, trip, other): price, save-up or pay-in-parts, target date, costs with dates, payments
   recorded as real transactions. Never assume a payment by date.
 

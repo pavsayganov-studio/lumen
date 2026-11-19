@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
-import type { Account, CategoryId, Project } from "./finance.ts";
+import type { Account, CategoryId } from "./finance.ts";
 import { useFinance, type LocaleMode } from "./store.ts";
 
-export type Locale = "en" | "ru";
+export type Locale = "en" | "ru" | "be";
 
 const en: Record<string, string> = {
   close: "Close",
@@ -69,10 +69,11 @@ const en: Record<string, string> = {
   budgetHelp: "Left to spend is money you have not given a job yet. A category only shrinks after it runs out.",
   settingsBlurb: "Your money stays on this phone. We never upload it.",
   language: "Language",
-  languageHelp: "Russian if your phone is in Russian. English otherwise.",
+  languageHelp: "Russian or Belarusian if your phone is set to it. English otherwise.",
   langAuto: "This phone",
   langEn: "English",
   langRu: "Русский",
+  langBe: "Беларуская",
   backup: "Backup code",
   backupHelp: "Copy a code onto your new phone. It never goes to us. A passphrase locks the code, so a screenshot of it stays unreadable.",
   passphrase: "Passphrase, optional",
@@ -190,18 +191,10 @@ const en: Record<string, string> = {
   sameAccount: "Pick two different accounts",
   noCategory: "No category",
   tapAgain: "Tap again to confirm",
-  welcomeTitle: "Welcome to Lumen",
-  welcomeBody: "A calm budget for one month at a time. Your money stays on this phone. Nothing is uploaded.",
-  startOwn: "Start with my own data",
-  startDemo: "Explore with sample data",
-  startDemoHint: "Sample data is made up. You can erase it any time in Settings.",
-  demoBanner: "Sample data. Tap to start with your own.",
   setBudgetFirst: "Set your monthly budget",
   setBudgetHint: "Then Lumen shows what is left to spend.",
-  loadDemo: "Load sample data",
   eraseAll: "Erase all my data",
   erased: "All data erased",
-  demoLoaded: "Sample data loaded",
   dataHeading: "Your data",
   removeGoal: "Remove project",
   goalSaved: "Project saved",
@@ -215,6 +208,15 @@ const en: Record<string, string> = {
   catFun: "Entertainment",
   catHealth: "Health",
   shareText: "Money flow",
+  home: "Home",
+  theme: "Appearance",
+  themeHelp: "Light, dark, or follow this phone.",
+  themeLight: "Light",
+  themeDark: "Dark",
+  currency: "Currency",
+  currencyHelp: "Changes the symbol only. Amounts are not converted.",
+  addFirst: "Add your first transaction",
+  addFirstHint: "An expense or income. Everything stays on this phone.",
   allocationFor: "{name} allocation",
 };
 
@@ -283,10 +285,11 @@ const ru: Record<string, string> = {
   budgetHelp: "«Можно потратить» — деньги без задачи. Категория уменьшается, только когда она закончилась.",
   settingsBlurb: "Деньги остаются на этом телефоне. Мы их никуда не отправляем.",
   language: "Язык",
-  languageHelp: "Русский, если телефон на русском. Иначе английский.",
+  languageHelp: "Русский или белорусский, если телефон на них. Иначе английский.",
   langAuto: "Телефон",
   langEn: "English",
   langRu: "Русский",
+  langBe: "Беларуская",
   backup: "Код копии",
   backupHelp: "Перенесите код на новый телефон. Он не уходит к нам. Фраза-ключ запирает код: снимок экрана ничего не скажет.",
   passphrase: "Фраза-ключ, необязательно",
@@ -404,18 +407,10 @@ const ru: Record<string, string> = {
   sameAccount: "Выберите два разных счёта",
   noCategory: "Без категории",
   tapAgain: "Нажмите ещё раз для подтверждения",
-  welcomeTitle: "Добро пожаловать в Lumen",
-  welcomeBody: "Спокойный бюджет на один месяц. Деньги остаются на этом телефоне и никуда не отправляются.",
-  startOwn: "Начать с чистого листа",
-  startDemo: "Посмотреть на примере",
-  startDemoHint: "Пример выдуманный. Стереть его можно в любой момент в настройках.",
-  demoBanner: "Это пример данных. Нажмите, чтобы начать со своих.",
   setBudgetFirst: "Задайте бюджет на месяц",
   setBudgetHint: "Тогда Lumen покажет, сколько ещё можно потратить.",
-  loadDemo: "Загрузить пример данных",
   eraseAll: "Стереть все мои данные",
   erased: "Данные стёрты",
-  demoLoaded: "Пример данных загружен",
   dataHeading: "Ваши данные",
   removeGoal: "Удалить проект",
   goalSaved: "Проект сохранён",
@@ -429,27 +424,258 @@ const ru: Record<string, string> = {
   catFun: "Досуг",
   catHealth: "Здоровье",
   shareText: "Куда ушли деньги",
+  home: "Главная",
+  theme: "Оформление",
+  themeHelp: "Светлое, тёмное или как на телефоне.",
+  themeLight: "Светлое",
+  themeDark: "Тёмное",
+  currency: "Валюта",
+  currencyHelp: "Меняется только символ. Суммы не пересчитываются.",
+  addFirst: "Добавьте первую операцию",
+  addFirstHint: "Расход или доход. Всё остаётся на этом телефоне.",
   allocationFor: "Сумма для «{name}»",
 };
+
+const be: Record<string, string> = {
+  close: "Закрыць",
+  save: "Захаваць",
+  edit: "Змяніць",
+  delete: "Выдаліць",
+  add: "Дадаць",
+  search: "Пошук",
+  name: "Назва",
+  amount: "Сума",
+  date: "Дата",
+  account: "Рахунак",
+  to: "Куды",
+  on: "Так",
+  off: "Не",
+  spent: "Выдаткавана",
+  income: "Даход",
+  transfer: "Пераклад",
+  expense: "Расход",
+  month: "Месяц",
+  year: "Год",
+  today: "Сёння",
+  settings: "Налады",
+  insights: "Агляд",
+  budget: "Бюджэт",
+  allocated: "Па плане",
+  available: "Вольна",
+  leftToSpend: "можна патраціць",
+  daysLeft: "яшчэ {n} дзён",
+  dayLeft: "яшчэ 1 дзень",
+  monthClosed: "Месяц закрыты",
+  notStarted: "Яшчэ не пачаўся",
+  trend: "Дынаміка",
+  top: "Найбольш",
+  upcoming: "Хутка",
+  saving: "Зберажэнні",
+  flow: "Куды пайшлі",
+  accounts: "Рахункі",
+  balance: "Баланс",
+  goals: "Праекты",
+  increasing: "Расце",
+  decreasing: "Змяншаецца",
+  steady: "Роўна",
+  strong: "Добра",
+  building: "Назапашваем",
+  low: "Мала",
+  noSpending: "Пакуль пуста",
+  expenses: "{n} плацяжоў",
+  expenseOne: "1 плацёж",
+  spentPct: "выдаткавана {n}%",
+  recent: "Нядаўнія",
+  noTransactions: "Пакуль няма аперацый.",
+  editBudget: "Змяніць бюджэт",
+  previous: "Папярэдні агляд",
+  next: "Наступны агляд",
+  share: "Падзяліцца патокам",
+  filter: "Фільтр катэгорый",
+  addAccount: "Дадаць рахунак",
+  previousYear: "Папярэдні год",
+  nextYear: "Наступны год",
+  jump: "Любы месяц",
+  monthlyBudget: "Бюджэт на месяц",
+  allocatedLine: "Па плане {allocated} · Вольна {available}",
+  budgetHelp: "«Можна патраціць» — грошы без задачы. Катэгорыя змяншаецца, толькі калі яна скончылася.",
+  settingsBlurb: "Грошы застаюцца на гэтым тэлефоне. Мы нікуды іх не адпраўляем.",
+  language: "Мова",
+  languageHelp: "Руская ці беларуская, калі тэлефон на іх. Інакш англійская.",
+  langAuto: "Тэлефон",
+  langEn: "English",
+  langRu: "Русский",
+  langBe: "Беларуская",
+  backup: "Код копіі",
+  backupHelp: "Перанясіце код на новы тэлефон. Ён не ідзе да нас. Фраза-ключ замыкае код: здымак экрана нічога не скажа.",
+  passphrase: "Фраза-ключ, неабавязкова",
+  passphraseHint: "Пры аднаўленні патрэбныя тыя самыя словы.",
+  copyCode: "Скапіяваць код",
+  copied: "Код скапіяваны",
+  copyFailed: "Не атрымалася скапіяваць. Вылучыце код уручную.",
+  pasteCode: "Устаўце код",
+  restore: "Аднавіць",
+  restoreAsk: "Замяніць даныя на гэтым тэлефоне?",
+  restored: "Копія адноўлена",
+  backupReady: "Код гатовы. Захоўвайце яго толькі ў сябе.",
+  needsPhrase: "Код закрыты. Увядзіце фразу-ключ.",
+  badCode: "Код пашкоджаны. Скапіюйце яго яшчэ раз.",
+  showHide: "Паказаць, схаваць, парадак",
+  shown: "На галоўнай",
+  hidden: "Схавана",
+  moveUp: "Вышэй",
+  moveDown: "Ніжэй",
+  hiddenAll: "Усе карткі схаваныя. Націсніце «Змяніць», каб вярнуць.",
+  newTx: "Новая аперацыя",
+  editTx: "Праўка",
+  enterAmount: "Увядзіце суму",
+  addName: "Дадайце назву",
+  txUpdated: "Аперацыя абноўлена",
+  txAdded: "Аперацыя дададзена",
+  txDeleted: "Аперацыя выдалена",
+  repeats: "Кожны месяц",
+  transactions: "Аперацыі",
+  spending: "Выдаткі",
+  savingKind: "Назапашванні",
+  removeAccount: "Выдаліць рахунак",
+  accountRemoved: "Рахунак выдалены",
+  accountBusy: "На рахунку яшчэ ёсць аперацыі",
+  newAccount: "Новы рахунак",
+  accountName: "Назва рахунка",
+  opening: "Пачатковы астатак",
+  nameBalance: "Патрэбныя назва і астатак",
+  default: "Асноўны",
+  allAccounts: "Усе рахункі",
+  spendingTrend: "Дынаміка выдаткаў",
+  average: "Звычайна",
+  whatTrend: "Што такое дынаміка?",
+  trendBody: "Гэты месяц побач з вашым звычайным тэмпам за 3 месяцы.",
+  trendBody2: "Суцэльная лінія — гэты месяц. Пункцір — звычайны тэмп. Цяпер выдаткі {word} ({pct} да гэтага тэмпу).",
+  moneyFlow: "Куды пайшлі грошы",
+  whatFlow: "Што гэта?",
+  flowBody: "Грошы ідуць ад групы да месцаў, куды вы іх аддалі. Чым тоўшчая стужка, тым большая сума.",
+  summaryCopied: "Зводка скапіявана",
+  breakdown: "Разбіўка выдаткаў",
+  totalSpending: "Усяго выдаткавана",
+  nothingSpent: "Пакуль нічога.",
+  monthlyAvg: "У сярэднім",
+  peak: "Самы вялікі",
+  categories: "Катэгорыі",
+  shownWord: "Бачна",
+  hiddenWord: "Схавана",
+  ofIncome: "даходу адкладзена",
+  saved: "Адкладзена",
+  otherSpending: "Астатнія выдаткі",
+  whatSaving: "Што такое норма зберажэнняў?",
+  savingBody: "Доля даходу гэтага месяца, якая пайшла ў назапашванні. Ад 15% — ужо добра.",
+  upcomingTx: "Будучыя",
+  upcomingExpenses: "Яшчэ наперадзе",
+  nothingScheduled: "Нічога не запланавана.",
+  monthly: "Кожны месяц",
+  goalsHelp: "Жыллё, машына, паездка або любая вялікая мэта. Збірайце або плаціце часткамі. Запланайце расходы і даты, а плацяжы запісвайце па меры аплаты.",
+  newGoal: "Новы праект",
+  editGoal: "Праўка праекта",
+  addGoal: "Пачаць праект",
+  saveUp: "Збіраем",
+  inParts: "У растэрміноўку",
+  price: "Цана",
+  alreadySaved: "Ужо ёсць",
+  setAside: "Адкладаць у месяц",
+  down: "Першы ўзнос",
+  months: "Месяцаў",
+  rate: "Стаўка ў год",
+  rateHelp: "Пры 0% плацёж кожны месяц аднолькавы. Стаўка дадае крыху працэнтаў.",
+  eachMonth: "Плацёж",
+  paidSoFar: "Ужо плацяжоў",
+  stillToPay: "Засталося выплаціць",
+  nextPayment: "Наступны плацёж",
+  downGap: "Яшчэ {n} да першага плацяжу",
+  monthsLeft: "Яшчэ каля {n} мес.",
+  goalReached: "Усё назапашана",
+  ofPrice: "{saved} з {price}",
+  kindHome: "Жыллё",
+  kindCar: "Машына",
+  kindOther: "Іншае",
+  kindTrip: "Паездка",
+  deadline: "Да якой даты",
+  needMonthly: "Каб паспець, адкладайце {n} у месяц",
+  onTrack: "Тэмп дазваляе паспець да даты",
+  notes: "Нататкі",
+  costs: "Расходы і даты",
+  costsHelp: "Білеты, натарыус, страхоўка: усё, што давядзецца аплаціць, і калі.",
+  addCost: "Дадаць расход",
+  costName: "Што",
+  schedule: "Графік",
+  payNow: "Аплаціць",
+  due: "Пара плаціць",
+  paidTag: "Аплачана",
+  moreInstallments: "Яшчэ плацяжоў: {n}",
+  statSaved: "Адкладзена",
+  statPaid: "Выплачана",
+  scheduledLeft: "Засталося запланаванага",
+  setAsideNow: "Адкласці",
+  recordPayment: "Запісаць плацёж",
+  history: "Гісторыя",
+  noHistory: "Пакуль нічога не запісана.",
+  projectFor: "Праект",
+  noProject: "Без праекта",
+  paidBefore: "Ужо ўнесена плацяжоў",
+  sameAccount: "Выберыце два розныя рахункі",
+  noCategory: "Без катэгорыі",
+  tapAgain: "Націсніце яшчэ раз для пацвярджэння",
+  setBudgetFirst: "Задайце бюджэт на месяц",
+  setBudgetHint: "Тады Lumen пакажа, колькі яшчэ можна патраціць.",
+  eraseAll: "Сцерці ўсе мае даныя",
+  erased: "Даныя сцёртыя",
+  dataHeading: "Вашы даныя",
+  removeGoal: "Выдаліць праект",
+  goalSaved: "Праект захаваны",
+  needPrice: "Укажыце цану",
+  addsBills: "Плюс {n} да будучых плацяжоў",
+  catHousing: "Жыллё",
+  catSavings: "Назапашванні",
+  catTransport: "Транспарт",
+  catFood: "Ежа і кафэ",
+  catShopping: "Пакупкі",
+  catFun: "Вольны час",
+  catHealth: "Здароўе",
+  shareText: "Куды пайшлі грошы",
+  allocationFor: "Сума для «{name}»",
+  home: "Галоўная",
+  theme: "Афармленне",
+  themeHelp: "Светлае, цёмнае або як на тэлефоне.",
+  themeLight: "Светлае",
+  themeDark: "Цёмнае",
+  currency: "Валюта",
+  currencyHelp: "Змяняецца толькі сімвал. Сумы не пераразлічваюцца.",
+  addFirst: "Дадайце першую аперацыю",
+  addFirstHint: "Расход або даход. Усё застаецца на гэтым тэлефоне.",
+};
+
+export const MESSAGES: Record<Locale, Record<string, string>> = { en, ru, be };
 
 const MONTHS = {
   en: ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"],
   ru: ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"],
+  be: ["Студзень", "Люты", "Сакавік", "Красавік", "Травень", "Чэрвень", "Ліпень", "Жнівень", "Верасень", "Кастрычнік", "Лістапад", "Снежань"],
 };
 
 const MONTHS_SHORT = {
   en: ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
   ru: ["янв", "фев", "мар", "апр", "мая", "июн", "июл", "авг", "сен", "окт", "ноя", "дек"],
+  be: ["сту", "лют", "сак", "кра", "тра", "чэр", "ліп", "жні", "вер", "кас", "ліс", "сне"],
 };
 
 const WEEKDAYS = {
   en: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
   ru: ["вс", "пн", "вт", "ср", "чт", "пт", "сб"],
+  be: ["нд", "пн", "аў", "ср", "чц", "пт", "сб"],
 };
 
 const WEEK_HEAD = {
   en: ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"],
   ru: ["ПН", "ВТ", "СР", "ЧТ", "ПТ", "СБ", "ВС"],
+  be: ["ПН", "АЎ", "СР", "ЧЦ", "ПТ", "СБ", "НД"],
 };
 
 const CAT: Record<CategoryId, string> = {
@@ -464,7 +690,8 @@ const CAT: Record<CategoryId, string> = {
 
 export function deviceLocale(): Locale {
   if (typeof navigator === "undefined") return "en";
-  return navigator.language.toLowerCase().startsWith("ru") ? "ru" : "en";
+  const lang = navigator.language.toLowerCase();
+  return lang.startsWith("ru") ? "ru" : lang.startsWith("be") ? "be" : "en";
 }
 
 export function resolveLocale(mode: LocaleMode, device: Locale): Locale {
@@ -472,7 +699,7 @@ export function resolveLocale(mode: LocaleMode, device: Locale): Locale {
 }
 
 export function translate(locale: Locale, key: string, vars?: Record<string, string | number>) {
-  let text = (locale === "ru" ? ru[key] : en[key]) ?? en[key] ?? key;
+  let text = MESSAGES[locale][key] ?? en[key] ?? key;
   if (vars) {
     for (const [name, value] of Object.entries(vars)) text = text.replaceAll(`{${name}}`, String(value));
   }
@@ -489,13 +716,19 @@ export function monthShortLabel(locale: Locale, month: number) {
   return MONTHS_SHORT[locale][month - 1] ?? "";
 }
 
+const DAYS_LEFT = {
+  ru: ["ещё", "день", "дня", "дней"],
+  be: ["яшчэ", "дзень", "дні", "дзён"],
+} as const;
+
 export function daysLeftLabel(locale: Locale, n: number) {
   if (locale === "en") return n === 1 ? translate(locale, "dayLeft") : translate(locale, "daysLeft", { n });
+  const [prefix, one, few, many] = DAYS_LEFT[locale];
   const mod10 = n % 10;
   const mod100 = n % 100;
-  if (mod10 === 1 && mod100 !== 11) return `ещё ${n} день`;
-  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return `ещё ${n} дня`;
-  return `ещё ${n} дней`;
+  if (mod10 === 1 && mod100 !== 11) return `${prefix} ${n} ${one}`;
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return `${prefix} ${n} ${few}`;
+  return `${prefix} ${n} ${many}`;
 }
 
 export function weekHead(locale: Locale) {
@@ -505,24 +738,23 @@ export function weekHead(locale: Locale) {
 export function fullDate(locale: Locale, iso: string) {
   const [y, m, d] = iso.split("-").map(Number);
   const dt = new Date(y, m - 1, d);
-  const w = WEEKDAYS[locale][dt.getDay()];
-  if (locale === "ru") return `${w}, ${d} ${MONTHS_SHORT.ru[m - 1]} ${y}`;
-  return `${w}, ${d} ${MONTHS_SHORT.en[m - 1]} ${y}`;
+  return `${WEEKDAYS[locale][dt.getDay()]}, ${d} ${MONTHS_SHORT[locale][m - 1]} ${y}`;
 }
 
 export function trendStamp(locale: Locale, iso: string) {
   const m = Number(iso.slice(5, 7));
   const d = Number(iso.slice(8, 10));
-  if (locale === "ru") return `${d} ${MONTHS_SHORT.ru[m - 1]}`;
-  return `${MONTHS_SHORT.en[m - 1]} ${d}`;
+  return locale === "en" ? `${MONTHS_SHORT.en[m - 1]} ${d}` : `${d} ${MONTHS_SHORT[locale][m - 1]}`;
 }
+
+const YESTERDAY: Record<Locale, string> = { en: "Yesterday", ru: "Вчера", be: "Учора" };
 
 export function dayHeading(locale: Locale, iso: string, today: string) {
   if (iso === today) return translate(locale, "today");
   const [y, m, d] = today.split("-").map(Number);
   const prev = new Date(y, m - 1, d - 1);
   const prevIso = `${prev.getFullYear()}-${String(prev.getMonth() + 1).padStart(2, "0")}-${String(prev.getDate()).padStart(2, "0")}`;
-  if (iso === prevIso) return locale === "ru" ? "Вчера" : "Yesterday";
+  if (iso === prevIso) return YESTERDAY[locale];
   return fullDate(locale, iso);
 }
 
@@ -530,17 +762,15 @@ export function catLabel(locale: Locale, id: CategoryId) {
   return translate(locale, CAT[id]);
 }
 
-export function accountTitle(locale: Locale, account: Pick<Account, "id" | "name">) {
-  if (account.id === "main" && account.name === "Main") return locale === "ru" ? "Основной" : "Main";
-  if (account.id === "saving" && account.name === "Saving") return locale === "ru" ? "Накопления" : "Saving";
-  return account.name;
-}
+const DEFAULT_ACCOUNT: Record<"main" | "saving", Record<Locale, string>> = {
+  main: { en: "Main", ru: "Основной", be: "Асноўны" },
+  saving: { en: "Saving", ru: "Накопления", be: "Назапашванні" },
+};
 
-export function projectTitle(locale: Locale, project: Pick<Project, "id" | "name">) {
-  if (project.id === "seed-home" && project.name === "Apartment") return locale === "ru" ? "Квартира" : "Apartment";
-  if (project.id === "seed-car" && project.name === "City car") return locale === "ru" ? "Городская машина" : "City car";
-  if (project.id === "seed-trip" && project.name === "Summer trip") return locale === "ru" ? "Летняя поездка" : "Summer trip";
-  return project.name;
+export function accountTitle(locale: Locale, account: Pick<Account, "id" | "name">) {
+  if (account.id === "main" && account.name === "Main") return DEFAULT_ACCOUNT.main[locale];
+  if (account.id === "saving" && account.name === "Saving") return DEFAULT_ACCOUNT.saving[locale];
+  return account.name;
 }
 
 export function directionLabel(locale: Locale, pct: number) {

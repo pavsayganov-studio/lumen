@@ -1,8 +1,12 @@
 name: Android APK
 
-# Manual only: Actions tab -> "Android APK" -> Run workflow.
+# Runs on Android pull requests (Dependabot included) and by hand: Actions tab -> "Android APK" -> Run workflow.
 on:
   workflow_dispatch:
+  pull_request:
+    paths:
+      - android/**
+      - .github/workflows/android.yml
 
 permissions:
   contents: read

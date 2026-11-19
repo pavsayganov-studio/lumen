@@ -5,13 +5,14 @@ no database in use (`.grok/app-env.json`: auth off, `deploy.database` false).
 
 Two clients:
 - **Web PWA** in `src/` (TanStack Start, Vite, Zustand). The full product. Details: `HANDOFF.md`.
-- **Android** in `android/` (Jetpack Compose). A demo-level mirror: budget ring, insights, add expense.
-  No projects, backup codes or language switch yet.
+- **Android** in `android/` (Jetpack Compose). A smaller mirror: budget ring, history, spending by category, add expense.
+  No projects or backup codes yet. Languages (en, ru, be), currency and theme work.
 
 ## Commands
 - `npm run dev` · `npm run typecheck` · `npm run build` · `npm test` · `npm run lint`
 - `npm run pack` → `repomix-output.xml` (app source, no platform plumbing). `npm run pack:android` → Android only.
-- Android: `cd android && ./gradlew assembleDebug`. CI: Actions → **Android APK** → Run workflow (manual only).
+- Android: `cd android && ./gradlew assembleDebug`. CI: **Android APK** runs on Android pull requests and by hand.
+  Release: push tag `vX.Y.Z` (= `versionName`) → **Android release** builds the signed APK and publishes it.
 
 ## Where things live
 - Web ledger: `src/lib/finance.ts` (cents inside, euros in the UI). State: `src/lib/store.ts`, localStorage key `lumen-budget-v1`.
@@ -23,10 +24,13 @@ Two clients:
   `src/lib/{auth,app-data,multiplayer,db.ts,preview-*}`.
 
 ## Invariants
-- November 2026 is the sample-data month. Web pins "today" to `DEMO_TODAY` (`2026-11-06`) only while sample data is on
-  (`setDemoClock`); real data uses the real date. Android pins it in `Demo` (`data/Model.kt`).
-  Sample Home must read: 1.332 € left, budget 3.900 €, upcoming 297 €. Project rows must not land in that month.
-- First launch asks: own data or sample data (`start` in the store). New real data starts with no budget (0), not a default.
+- No sample data anywhere. The app opens empty on the real date and Home asks for a budget and a first transaction.
+  Data saved before store version 2 that was sample data is dropped on load (`migrate` in `store.ts`). A new budget is 0.
+- Currency (EUR, USD, RUB, BYN) changes the symbol only; amounts are never converted. `CURRENCIES` in `finance.ts` is the one table.
+- Languages: Russian on a Russian device, Belarusian on a Belarusian one, English otherwise. Web: `i18n.ts`. Android: `res/values*/strings.xml`.
+- Themes: Dark and Light (Cloud Dancer `#F0EEE9`, never pure white), Auto follows the phone. Web: `data-theme` on `<html>`, `--color-white`
+  is the ink color. Android: `Palette` in `ui/Theme.kt`.
+- Bottom bar: Home, Transactions, Accounts, Projects, Settings (web, `navbar.tsx`); Home, History, Add, Insights, Settings (Android).
 - Projects: `scheduleRows` is the single list of planned payments. A row is paid only by a recorded transaction with the same
   `planRef` (or `paidBefore` for old installments). Never assume payment by date; unpaid rows stay Due.
 - Posted spending, the ring and the trend ignore future plan rows; only Upcoming merges them in.
@@ -36,7 +40,7 @@ Two clients:
 
 ## Principles
 KISS, YAGNI, DRY, SOLID. No dead code, no unused dependencies, no speculative features. One place per fact
-(versions, demo numbers, colors). Keep logic out of composables and components.
+(versions, colors, currencies). Keep logic out of composables and components.
 
 ## Working agreement
 - Smallest diff that solves the task. Say what changed and why in a few lines; no restating the request.

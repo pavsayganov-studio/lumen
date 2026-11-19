@@ -1,39 +1,42 @@
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import {
-  buildSeed,
   cents,
   emptyData,
   euros,
   postedSpend,
-  setDemoClock,
+  setCurrency,
   spentByCategory,
   todayISO,
   type Account,
   type CategoryId,
+  type CurrencyId,
   type InsightId,
+  type LedgerData,
   type Project,
-  type SeedData,
   type Transaction,
   type TxKind,
 } from "./finance.ts";
 import type { Snapshot } from "./backup.ts";
 
-export type LocaleMode = "auto" | "en" | "ru";
+export type LocaleMode = "auto" | "en" | "ru" | "be";
 
-/** ask: first launch, nothing chosen yet. demo: made-up sample data. own: the person's real data. */
-export type StartMode = "ask" | "demo" | "own";
+export type ThemeMode = "auto" | "light" | "dark";
 
 const INSIGHT_ORDER: InsightId[] = ["trend", "top", "upcoming", "saving", "flow", "accounts", "projects"];
 
-interface FinanceState extends SeedData {
-  start: StartMode;
+interface FinanceState extends LedgerData {
   month: string;
   insightOrder: InsightId[];
   hiddenInsights: InsightId[];
   localeMode: LocaleMode;
+  themeMode: ThemeMode;
+  currency: CurrencyId;
   setMonth: (month: string) => void;
   setLocaleMode: (mode: LocaleMode) => void;
+  setThemeMode: (mode: ThemeMode) => void;
+  /** Changes the symbol only. Amounts are not converted. */
+  setCurrency: (id: CurrencyId) => void;
   toggleInsight: (id: InsightId) => void;
   moveInsight: (id: InsightId, dir: -1 | 1) => void;
   setBudget: (month: string, amount: number) => void;
@@ -47,12 +50,12 @@ interface FinanceState extends SeedData {
   saveProject: (input: Project) => void;
   deleteProject: (id: string) => void;
   restoreSnapshot: (snapshot: Snapshot) => void;
-  /** Pick what the app starts with. Replaces all data; the language choice stays. */
-  begin: (mode: "demo" | "own") => void;
+  /** Erase all ledger data. Language, theme and currency stay. */
+  erase: () => void;
 }
 
 function bumpAllocations(
-  allocations: SeedData["allocations"],
+  allocations: LedgerData["allocations"],
   transactions: Transaction[],
   month: string,
 ) {
@@ -70,11 +73,23 @@ function bumpAllocations(
   return { ...allocations, [month]: map };
 }
 
-function dataFor(mode: StartMode) {
-  setDemoClock(mode === "demo");
+/**
+ * Before store version 2 the app could hold made-up sample data (start "demo", or no start at all).
+ * That data is dropped; the person's own data and the display choices stay.
+ */
+export function dropSampleData(persisted: unknown) {
+  const saved = (persisted ?? {}) as Partial<FinanceState> & { start?: string };
+  if (saved.start === "own") {
+    const own = { ...saved };
+    delete own.start;
+    return own;
+  }
+  return { localeMode: saved.localeMode, insightOrder: saved.insightOrder, hiddenInsights: saved.hiddenInsights };
+}
+
+function freshData() {
   return {
-    ...(mode === "demo" ? buildSeed() : emptyData()),
-    start: mode,
+    ...emptyData(),
     month: todayISO().slice(0, 7),
     insightOrder: [...INSIGHT_ORDER],
     hiddenInsights: [] as InsightId[],
@@ -90,10 +105,17 @@ const memory = {
 export const useFinance = create<FinanceState>()(
   persist(
     (set, get) => ({
-      ...dataFor("ask"),
+      ...freshData(),
       localeMode: "auto",
+      themeMode: "auto",
+      currency: "EUR",
       setMonth: (month) => set({ month }),
       setLocaleMode: (mode) => set({ localeMode: mode }),
+      setThemeMode: (mode) => set({ themeMode: mode }),
+      setCurrency: (id) => {
+        setCurrency(id);
+        set({ currency: id });
+      },
       toggleInsight: (id) =>
         set((s) => ({
           hiddenInsights: s.hiddenInsights.includes(id)
@@ -170,10 +192,7 @@ export const useFinance = create<FinanceState>()(
           transactions: s.transactions.map((t) => (t.projectId === id ? { ...t, projectId: undefined, planRef: undefined } : t)),
         })),
       restoreSnapshot: (snapshot) => {
-        const start: StartMode = snapshot.demo ? "demo" : "own";
-        setDemoClock(start === "demo");
         set({
-          start,
           accounts: snapshot.accounts,
           transactions: snapshot.transactions,
           budgets: snapshot.budgets,
@@ -184,31 +203,32 @@ export const useFinance = create<FinanceState>()(
           hiddenInsights: snapshot.hiddenInsights ?? [],
         });
       },
-      begin: (mode) => set(dataFor(mode)),
+      erase: () => set(freshData()),
     }),
     {
       name: "lumen-budget-v1",
       storage: createJSONStorage(() => (typeof window === "undefined" ? memory : localStorage)),
       skipHydration: true,
+      version: 2,
+      migrate: (persisted) => dropSampleData(persisted),
       merge: (persisted, current) => {
         const saved = (persisted ?? {}) as Partial<FinanceState>;
-        // Data saved before first-run existed came with the sample data.
-        const start: StartMode = saved.start ?? (saved.transactions ? "demo" : "ask");
-        setDemoClock(start === "demo");
+        const currency = saved.currency ?? "EUR";
+        setCurrency(currency);
         const order = [...(saved.insightOrder ?? current.insightOrder)];
         for (const id of INSIGHT_ORDER) if (!order.includes(id)) order.push(id);
         return {
           ...current,
           ...saved,
-          start,
           insightOrder: order,
           projects: saved.projects ?? current.projects,
           localeMode: saved.localeMode ?? "auto",
+          themeMode: saved.themeMode ?? "auto",
+          currency,
           hiddenInsights: saved.hiddenInsights ?? [],
         };
       },
       partialize: (s) => ({
-        start: s.start,
         accounts: s.accounts,
         transactions: s.transactions,
         budgets: s.budgets,
@@ -218,6 +238,8 @@ export const useFinance = create<FinanceState>()(
         insightOrder: s.insightOrder,
         hiddenInsights: s.hiddenInsights,
         localeMode: s.localeMode,
+        themeMode: s.themeMode,
+        currency: s.currency,
       }),
     },
   ),

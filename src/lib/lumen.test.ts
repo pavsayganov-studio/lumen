@@ -2,43 +2,48 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { exportBackup, importBackup } from "./backup.ts";
 import {
-  auditSeed,
+  CURRENCIES,
+  CURRENCY_IDS,
   budgetOf,
   emptyData,
   planBills,
   projectPlan,
   scheduleRows,
-  seedProjects,
-  setDemoClock,
-  todayISO,
+  formatCompact,
+  formatMoney,
+  setCurrency,
   type Project,
   type Transaction,
 } from "./finance.ts";
-import { daysLeftLabel } from "./i18n.ts";
+import { MESSAGES, daysLeftLabel } from "./i18n.ts";
+import { dropSampleData } from "./store.ts";
 
-describe("demo month", () => {
-  it("matches the November figures", () => {
-    const audit = auditSeed();
-    assert.equal(audit.budget, 3900);
-    assert.equal(audit.available, 1332);
-    assert.equal(audit.spent, 2188);
-    assert.equal(audit.upcoming, 297);
-    assert.equal(audit.trendPct, 19);
-    assert.equal(audit.net, 2072);
-  });
-});
+const car: Project = {
+  id: "c1",
+  name: "City car",
+  kind: "car",
+  target: 18000,
+  saved: 4200,
+  monthlySave: 0,
+  installment: true,
+  downPayment: 5000,
+  months: 36,
+  apr: 4.9,
+  start: "2026-12-05",
+};
+
+const flat: Project = { ...car, id: "f1", name: "Flat", kind: "home", target: 42000, saved: 18500, monthlySave: 800, installment: false, downPayment: 0, months: 12, apr: 0, start: "2026-12-01" };
 
 describe("goals", () => {
   it("prices a savings goal and an installment", () => {
-    const [home, car] = seedProjects();
-    const saved = projectPlan(home, "2026-11-06");
+    const saved = projectPlan(flat, "2026-11-06");
     const loan = projectPlan(car, "2026-11-06");
     assert.equal(saved.left, 23500);
     assert.equal(saved.monthsLeft, 30);
     assert.equal(loan.monthly, 389.04);
     assert.equal(loan.downGap, 800);
-    assert.equal(planBills(seedProjects(), "2026-11", "2026-11-06").length, 0);
-    assert.equal(planBills(seedProjects(), "2026-12", "2026-11-06")[0]?.amount, 389.04);
+    assert.equal(planBills([flat, car], "2026-11", "2026-11-06").length, 0);
+    assert.equal(planBills([flat, car], "2026-12", "2026-11-06")[0]?.amount, 389.04);
   });
 });
 
@@ -50,7 +55,7 @@ describe("backup", () => {
       transactions: [],
       budgets: { "2026-11": 3900 },
       allocations: {},
-      projects: seedProjects(),
+      projects: [flat, car],
       month: "2026-11",
       insightOrder: ["projects" as const],
       hiddenInsights: [],
@@ -72,6 +77,38 @@ describe("language", () => {
     assert.equal(daysLeftLabel("ru", 1), "ещё 1 день");
     assert.equal(daysLeftLabel("ru", 2), "ещё 2 дня");
     assert.equal(daysLeftLabel("ru", 25), "ещё 25 дней");
+  });
+
+  it("counts days in Belarusian", () => {
+    assert.equal(daysLeftLabel("be", 1), "яшчэ 1 дзень");
+    assert.equal(daysLeftLabel("be", 3), "яшчэ 3 дні");
+    assert.equal(daysLeftLabel("be", 12), "яшчэ 12 дзён");
+  });
+
+  it("translates every key in Russian and Belarusian", () => {
+    const keys = Object.keys(MESSAGES.en);
+    for (const locale of ["ru", "be"] as const) {
+      assert.deepEqual(keys.filter((k) => !MESSAGES[locale][k]), [], locale);
+      assert.deepEqual(Object.keys(MESSAGES[locale]).filter((k) => !(k in MESSAGES.en)), [], locale);
+    }
+  });
+});
+
+describe("currency", () => {
+  it("writes each official symbol in its usual place", () => {
+    const text = (id: keyof typeof CURRENCIES) => {
+      setCurrency(id);
+      return formatMoney(1332.5);
+    };
+    assert.equal(text("EUR"), "1.332,50\u00a0€");
+    assert.equal(text("USD"), "$1,332.50");
+    assert.equal(text("RUB"), "1\u00a0332,50\u00a0₽");
+    assert.equal(text("BYN"), "1\u00a0332,50\u00a0Br");
+    assert.equal(CURRENCY_IDS.length, 4);
+    setCurrency("USD");
+    assert.equal(formatMoney(-12), "\u2212$12");
+    assert.equal(formatCompact(1500), "$1.5K");
+    setCurrency("EUR");
   });
 });
 
@@ -99,16 +136,6 @@ const pay = (over: Partial<Transaction>): Transaction => ({
   date: "2026-11-03",
   accountId: "main",
   ...over,
-});
-
-describe("clock", () => {
-  it("is pinned only while sample data is on", () => {
-    setDemoClock(true);
-    assert.equal(todayISO(), "2026-11-06");
-    setDemoClock(false);
-    assert.equal(todayISO(), todayISO(new Date()));
-    assert.notEqual(todayISO(new Date(2030, 0, 5)), "2026-11-06");
-  });
 });
 
 describe("clean start", () => {
@@ -166,5 +193,20 @@ describe("project schedule", () => {
     const settled = pay({ id: "s", amount: 2500, projectId: "c", planRef: rows[1].ref });
     assert.equal(projectPlan(car, "2026-11-17", [settled]).paidCount, 2);
     assert.equal(projectPlan(car, "2026-11-17", []).dueCount, 2);
+  });
+});
+
+describe("saved data from earlier versions", () => {
+  it("drops sample data and keeps the language", () => {
+    const sample = { start: "demo", transactions: [{ id: "t1" }], localeMode: "ru" };
+    const legacy = { transactions: [{ id: "t1" }], localeMode: "en" };
+    assert.deepEqual(dropSampleData(sample), { localeMode: "ru", insightOrder: undefined, hiddenInsights: undefined });
+    assert.equal("transactions" in dropSampleData(legacy), false);
+  });
+
+  it("keeps the person's own data", () => {
+    const own = dropSampleData({ start: "own", transactions: [{ id: "t1" }], localeMode: "be" }) as Record<string, unknown>;
+    assert.equal((own.transactions as unknown[]).length, 1);
+    assert.equal("start" in own, false);
   });
 });

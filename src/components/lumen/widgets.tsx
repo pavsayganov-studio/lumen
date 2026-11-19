@@ -31,7 +31,7 @@ import {
   Wifi,
   type LucideIcon,
 } from "lucide-react";
-import { formatMoney } from "@/lib/finance";
+import { formatCompact, formatMoney } from "@/lib/finance";
 import { useI18n } from "@/lib/i18n";
 
 export function ClientOnly({ children, className }: { children: ReactNode; className?: string }) {
@@ -189,7 +189,7 @@ export function Gauge({ pct }: { pct: number }) {
           <stop offset="100%" stopColor="#4c8dff" />
         </linearGradient>
       </defs>
-      <path d="M14 60 A46 46 0 0 1 106 60" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="9" strokeLinecap="round" />
+      <path d="M14 60 A46 46 0 0 1 106 60" fill="none" stroke="color-mix(in oklab, var(--color-white) 8%, transparent)" strokeWidth="9" strokeLinecap="round" />
       <path
         d="M14 60 A46 46 0 0 1 106 60"
         fill="none"
@@ -308,7 +308,7 @@ export function TrendChart({
               <stop offset="100%" stopColor="var(--color-cyan)" stopOpacity={0} />
             </linearGradient>
           </defs>
-          <CartesianGrid stroke="rgba(255,255,255,0.06)" />
+          <CartesianGrid stroke="color-mix(in oklab, var(--color-white) 6%, transparent)" />
           <XAxis
             dataKey="day"
             ticks={[5, 10, 15, 20, 25, 30].filter((d) => d <= data.length)}
@@ -323,11 +323,11 @@ export function TrendChart({
             axisLine={false}
             tickLine={false}
             width={52}
-            tickFormatter={(v: number) => (v >= 1000 ? `€${(v / 1000).toFixed(1)}K` : v === 0 ? "0,00 €" : formatMoney(v, 0))}
+            tickFormatter={formatCompact}
           />
           <Tooltip content={<ChartTip />} />
           {cutoff > 0 ? (
-            <ReferenceLine x={cutoff} stroke="rgba(255,255,255,0.45)" strokeDasharray="3 4" />
+            <ReferenceLine x={cutoff} stroke="color-mix(in oklab, var(--color-white) 45%, transparent)" strokeDasharray="3 4" />
           ) : null}
           <Area
             type="monotone"
@@ -372,7 +372,7 @@ export function StackedMonths({
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={data} margin={{ top: 8, right: 0, left: 0, bottom: 0 }} barCategoryGap="28%">
           <XAxis dataKey="label" tick={{ fill: "var(--color-faint)", fontSize: 11 }} axisLine={false} tickLine={false} />
-          <Tooltip content={<ChartTip />} cursor={{ fill: "rgba(255,255,255,0.04)" }} />
+          <Tooltip content={<ChartTip />} cursor={{ fill: "color-mix(in oklab, var(--color-white) 4%, transparent)" }} />
           {keys.map((k) => (
             <Bar key={k.id} dataKey={k.id} name={k.label ?? k.id} stackId="s" fill={k.color} />
           ))}
@@ -394,7 +394,7 @@ export function BalanceChart({ points, seriesName = "Balance" }: { points: { dat
               <stop offset="100%" stopColor="var(--color-good)" stopOpacity={0} />
             </linearGradient>
           </defs>
-          <CartesianGrid stroke="rgba(255,255,255,0.05)" vertical={false} />
+          <CartesianGrid stroke="color-mix(in oklab, var(--color-white) 5%, transparent)" vertical={false} />
           <XAxis
             dataKey="date"
             ticks={ticks}
@@ -424,7 +424,7 @@ export function Sankey({
   mode,
 }: {
   links: { source: string; target: string; value: number; color: string }[];
-  mode: "eur" | "pct";
+  mode: "amount" | "pct";
 }) {
   const { t } = useI18n();
   if (!links.length) return <p className="py-16 text-center text-muted">{t("nothingSpent")}</p>;
@@ -495,9 +495,9 @@ export function Sankey({
         const mid = node.y + node.h / 2;
         return (
           <g key={g.name}>
-            <rect x={xCat - 108} y={round1(mid - 16)} width={100} height={32} rx={8} fill="rgba(6, 16, 16, 0.72)" />
+            <rect x={xCat - 108} y={round1(mid - 16)} width={100} height={32} rx={8} fill="color-mix(in oklab, var(--color-bg) 78%, transparent)" />
             <rect x={xCat} y={round1(node.y)} width={3} height={round1(node.h)} rx={1.5} fill={g.color} />
-            <text x={xCat - 14} y={round1(mid - 2)} textAnchor="end" fill="#f5f7fb" fontSize="11" fontWeight={600} fontFamily="Outfit, sans-serif">
+            <text x={xCat - 14} y={round1(mid - 2)} textAnchor="end" fill="var(--color-fg)" fontSize="11" fontWeight={600} fontFamily="Outfit, sans-serif">
               {g.name}
             </text>
             <text x={xCat - 14} y={round1(mid + 12)} textAnchor="end" fill="#c5d0e0" fontSize="10" fontFamily="Outfit, sans-serif">
@@ -511,7 +511,7 @@ export function Sankey({
         return (
           <g key={n.target}>
             <rect x={xMerch} y={round1(node.y)} width={3} height={round1(Math.max(6, node.h))} rx={1.5} fill={n.color} />
-            <text x={xMerch + 8} y={round1(node.labelY)} fill="#f5f7fb" fontSize="11" fontFamily="Outfit, sans-serif">
+            <text x={xMerch + 8} y={round1(node.labelY)} fill="var(--color-fg)" fontSize="11" fontFamily="Outfit, sans-serif">
               {n.target} {label(n.value)}
             </text>
           </g>

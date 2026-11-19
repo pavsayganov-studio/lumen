@@ -3,7 +3,7 @@
     <!-- Budget data lives in app preferences; keep it out of cloud and adb backups. -->
     <application
         android:allowBackup="false"
-        android:icon="@drawable/ic_launcher"
+        android:icon="@mipmap/ic_launcher"
         android:label="Lumen"
         android:supportsRtl="true"
         android:theme="@style/Theme.Lumen">

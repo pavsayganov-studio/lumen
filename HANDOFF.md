@@ -4,11 +4,11 @@ Lumen is a TanStack Start app. State lives in Zustand (`src/lib/store.ts`) and i
 
 ## Money
 
-`src/lib/finance.ts` is the ledger. Amounts are euros in the UI and cents inside the helpers. November 2026 is the sample-data month, pinned with `DEMO_TODAY` (`2026-11-06`) only while sample data is on (`setDemoClock`). Real data uses the real date. `budgetOf` carries the latest earlier budget forward and is 0 when none was set. Do not let project rows land in November 2026 or the sample home numbers move.
+`src/lib/finance.ts` is the ledger. Amounts are in the chosen currency in the UI and cents inside the helpers. There is no sample data; the app uses the real date. `budgetOf` carries the latest earlier budget forward and is 0 when none was set. `CURRENCIES` holds the symbols (€, $, ₽, Br); `setCurrency` is called by the store and `formatMoney` reads it.
 
 ## First launch
 
-`start` in the store is `ask | demo | own`. Saved data from before this existed counts as `demo`. `begin(mode)` replaces all data and keeps the language. Rendering waits for the saved data to load, so a returning person never sees the welcome screen. The backup snapshot carries `demo` so a restore keeps the right clock.
+The app opens empty: Home asks for a monthly budget and a first transaction. Persisted store version 2 drops sample data saved by earlier versions (`start` was `demo`, or missing) and keeps the person's own data, language, theme and currency. Rendering waits for the saved data to load.
 
 Posted spending, the ring, and the trend ignore future plan rows. Only Upcoming merges them in.
 
@@ -21,7 +21,7 @@ Posted spending, the ring, and the trend ignore future plan rows. Only Upcoming 
 3. Open: SHA-256 prefix stored beside the gzip, then base64url. Prefix `LUMEN1.`
 4. Locked: PBKDF2-SHA256, 120,000 iterations, 16-byte salt, AES-GCM 12-byte IV. Prefix `LUMEN1P.`
 
-Restore replaces accounts, transactions, budgets, allocations, projects, month, insight layout and the sample-data flag. It does not change the language choice.
+Restore replaces accounts, transactions, budgets, allocations, projects, month and insight layout. It does not change the language, theme or currency.
 
 ## Projects
 
@@ -33,16 +33,14 @@ Restore replaces accounts, transactions, budgets, allocations, projects, month, 
 
 `projectPlan(project, today, txns)`: saving up counts `saved + tagged transfers`, or tagged expenses if that is more. Installments use the loan formula with paid rows. `needMonthly` is the amount that reaches the price by `deadline`.
 
-Seed projects are `seed-home`, `seed-car` and `seed-trip`. Their names translate while they are still the defaults.
-
 ## Language
 
-`src/lib/i18n.ts`. `localeMode` is `auto | en | ru`. Auto reads `navigator.language` after mount so the server and the first client render stay English and do not mismatch. Category ids stay English. Display names come from `catLabel`.
+`src/lib/i18n.ts`. `localeMode` is `auto | en | ru | be`. Auto reads `navigator.language` after mount so the server and the first client render stay English and do not mismatch. Category ids stay English. Display names come from `catLabel`.
 
 ## Android
 
-`android/` plus `.github/workflows/android.yml` (manual run only). Code: `data/` (model, money format, storage) and `ui/` (theme, components, screens). Versions: `android/gradle/libs.versions.toml`. It is behind the web app: no goals, no backup, no i18n. Expenses added on the phone live in SharedPreferences (`lumen` / `extra`); a budget edit is not persisted across app restarts yet.
+`android/`, `.github/workflows/android.yml` (pull requests and manual) and `.github/workflows/release.yml` (tag `vX.Y.Z`, signed APK, GitHub release). Code: `data/` (model, money, storage) and `ui/` (theme, components, screens). Strings: `res/values`, `values-ru`, `values-be`. Versions: `android/gradle/libs.versions.toml`. It is a smaller mirror: expenses, budget, currency and theme in SharedPreferences (`lumen`); no projects or backup. The release keystore is never in git: secrets `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`.
 
 ## Checks
 
-`npm run typecheck` and `npm run build`. Home for November should still read 1.332 € left, budget 3.900 €, upcoming 297 €.
+`npm run typecheck` and `npm run build`. The first launch must show an empty Home with the budget and first-transaction prompts.
