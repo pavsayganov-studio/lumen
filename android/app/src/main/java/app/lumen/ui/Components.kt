@@ -163,7 +163,7 @@ internal fun BudgetRing(fraction: Double, amount: String) {
             drawArc(p.accent.copy(alpha = 0.2f), 0f, 360f, false, topLeft, arc, style = Stroke(16.dp.toPx(), cap = StrokeCap.Round))
             if (fraction > 0) {
                 drawArc(
-                    brush = Brush.linearGradient(listOf(Color(0xFF7AF0FF), Color(0xFF1AA4FF))),
+                    brush = Brush.linearGradient(listOf(p.accentFrom, p.accentTo)),
                     startAngle = 140f,
                     sweepAngle = 360f * fraction.coerceIn(0.0, 1.0).toFloat(),
                     useCenter = false,

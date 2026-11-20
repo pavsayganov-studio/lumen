@@ -43,7 +43,7 @@ import {
   type RangeId,
   type Transaction,
 } from "@/lib/finance";
-import { useFinance } from "@/lib/store";
+import { keepStorage, useFinance } from "@/lib/store";
 import { useApplyTheme } from "@/lib/theme";
 import { accountTitle, catLabel, daysLeftLabel, directionLabel, monthLabel, savingWord, useI18n } from "@/lib/i18n";
 import { tabOf, type Go, type Route } from "@/components/lumen/nav";
@@ -91,7 +91,10 @@ export function App() {
   // Saved data loads after the first paint; wait for it so a returning person never sees the welcome screen.
   const [ready, setReady] = useState(false);
   useEffect(() => {
-    void Promise.resolve(useFinance.persist.rehydrate()).then(() => setReady(true));
+    void Promise.resolve(useFinance.persist.rehydrate()).then(() => {
+      keepStorage();
+      setReady(true);
+    });
   }, []);
   const month = useFinance((s) => s.month);
   const raw = useFinance((s) => s.transactions);

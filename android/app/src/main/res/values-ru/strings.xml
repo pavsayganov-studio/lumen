@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="nav_home">Главная</string>
-    <string name="nav_history">История</string>
     <string name="nav_add">Добавить</string>
     <string name="nav_insights">Обзор</string>
     <string name="nav_settings">Настройки</string>
@@ -16,8 +15,6 @@
     <string name="set_budget_hint">Тогда Lumen покажет, сколько ещё можно потратить.</string>
     <string name="add_first">Добавьте первый расход</string>
     <string name="add_first_hint">Всё остаётся на этом телефоне.</string>
-    <string name="recent">Недавние</string>
-    <string name="no_expenses">Расходов пока нет.</string>
     <string name="new_expense">Новый расход</string>
     <string name="amount">Сумма</string>
     <string name="name">Название</string>
@@ -45,4 +42,50 @@
         <item quantity="many">ещё %d дней</item>
         <item quantity="other">ещё %d дня</item>
     </plurals>
+    <string name="history">История</string>
+    <string name="nav_projects">Проекты</string>
+    <string name="month_closed">Месяц закрыт</string>
+    <string name="month_ahead">Ещё не начался</string>
+    <string name="pick_month">Выберите месяц</string>
+    <string name="year_prev">Предыдущий год</string>
+    <string name="year_next">Следующий год</string>
+    <string name="projects_empty">Запланируйте крупную покупку</string>
+    <string name="projects_empty_hint">Квартира, машина или поездка: задайте цену и платежи.</string>
+    <string name="new_project">Новый проект</string>
+    <string name="edit_project">Изменить проект</string>
+    <string name="kind_home">Жильё</string>
+    <string name="kind_car">Машина</string>
+    <string name="kind_trip">Поездка</string>
+    <string name="kind_other">Другое</string>
+    <string name="price">Цена</string>
+    <string name="target_date">Целевая дата (необязательно)</string>
+    <string name="clear">Сбросить</string>
+    <string name="paid">Оплачено</string>
+    <string name="balance_due">Остаток</string>
+    <string name="plan">График платежей</string>
+    <string name="payments">Платежи</string>
+    <string name="pay">Оплатить</string>
+    <string name="due">К оплате</string>
+    <string name="next_payment">Ближайший платёж</string>
+    <string name="add_payment">Добавить платёж</string>
+    <string name="add_cost">Добавить плановый расход</string>
+    <string name="split_balance">Разбить остаток на платежи</string>
+    <string name="parts">Количество платежей</string>
+    <string name="first_payment">Первый платёж</string>
+    <string name="date">Дата</string>
+    <string name="need_monthly">Откладывайте %1$s в месяц, чтобы успеть к целевой дате.</string>
+    <string name="delete_project">Удалить проект</string>
+    <string name="delete_project_ask">Платежи останутся в истории.</string>
+    <string name="cancel">Отмена</string>
+    <string name="backup">Резервная копия</string>
+    <string name="backup_help">Сохраните все данные в один файл или восстановите их на другом телефоне. Файл не зашифрован: храните его в тайне.</string>
+    <string name="backup_save">Сохранить в файл</string>
+    <string name="backup_restore">Восстановить из файла</string>
+    <string name="backup_done">Копия сохранена.</string>
+    <string name="backup_failed">Не удалось записать файл.</string>
+    <string name="restore_done">Данные восстановлены.</string>
+    <string name="restore_invalid">Это не копия Lumen.</string>
+    <string name="restore_title">Заменить данные на этом телефоне?</string>
+    <string name="restore_ask">Всё, что сохранено здесь, будет заменено копией.</string>
+    <string name="restore">Восстановить</string>
 </resources>

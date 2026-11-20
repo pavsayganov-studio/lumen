@@ -11,8 +11,8 @@ android {
         applicationId = "app.lumen"
         minSdk = 26
         targetSdk = 36
-        versionCode = 3 // +1 for every release
-        versionName = "0.1.0" // keep in step with package.json; the release tag is v + this
+        versionCode = 4 // +1 for every release
+        versionName = "0.2.0" // keep in step with package.json; the release tag is v + this
     }
 
     // The keystore lives outside git. CI passes it through environment variables from GitHub Secrets.

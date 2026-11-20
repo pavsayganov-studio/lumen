@@ -146,6 +146,16 @@ export const CURRENCIES: Record<CurrencyId, { symbol: string; before: boolean; g
 
 export const CURRENCY_IDS = Object.keys(CURRENCIES) as CurrencyId[];
 
+/** First-launch currency from a language tag: Belarusian language or region is BYN, Russian RUB, English USD, otherwise EUR. */
+export function defaultCurrency(tag: string): CurrencyId {
+  const [language = "", ...rest] = tag.toLowerCase().split(/[-_]/);
+  const region = rest.find((part) => part.length === 2);
+  if (region === "by" || language === "be") return "BYN";
+  if (language === "ru") return "RUB";
+  if (language === "en") return "USD";
+  return "EUR";
+}
+
 let activeCurrency: CurrencyId = "EUR";
 
 /** The store sets this once; formatMoney reads it so call sites stay short. */

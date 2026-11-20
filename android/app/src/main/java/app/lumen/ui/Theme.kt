@@ -15,8 +15,12 @@ internal class Palette(
     val ink: Color,
     val muted: Color,
     val accent: Color,
+    /** Ends of the accent gradient: budget ring, progress bars, Add button. */
+    val accentFrom: Color,
+    val accentTo: Color,
     val onAccent: Color,
     val good: Color,
+    val danger: Color,
 )
 
 internal val DarkPalette = Palette(
@@ -24,8 +28,11 @@ internal val DarkPalette = Palette(
     ink = Color.White,
     muted = Color(0xFF9AA6BD),
     accent = Color(0xFF3AD7FF),
+    accentFrom = Color(0xFF7AF0FF),
+    accentTo = Color(0xFF1AA4FF),
     onAccent = Color(0xFF041018),
     good = Color(0xFF3DDC97),
+    danger = Color(0xFFFF5D73),
 )
 
 /** Light uses Cloud Dancer, never pure white. */
@@ -34,8 +41,11 @@ internal val LightPalette = Palette(
     ink = Color(0xFF151A24),
     muted = Color(0xFF566074),
     accent = Color(0xFF08779E),
+    accentFrom = Color(0xFF1BA3CC),
+    accentTo = Color(0xFF08779E),
     onAccent = Color(0xFFF0EEE9),
     good = Color(0xFF0E8A5C),
+    danger = Color(0xFFCF2F49),
 )
 
 private val LocalPalette = staticCompositionLocalOf { DarkPalette }
@@ -64,5 +74,7 @@ internal fun categoryColor(category: String): Color = when (category) {
     "Savings" -> Color(0xFFFF8A3D)
     "Transportation" -> Color(0xFF4C8DFF)
     "Food & Drink" -> Color(0xFFE15CF0)
+    "Entertainment" -> Color(0xFFF6C445)
+    "Health" -> Color(0xFF34D399)
     else -> Color(0xFF8B7CFF)
 }

@@ -1,34 +1,39 @@
 package app.lumen.ui
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -37,85 +42,96 @@ import app.lumen.R
 import app.lumen.data.CATEGORIES
 import app.lumen.data.Currency
 import app.lumen.data.Expense
+import app.lumen.data.Ledger
 import app.lumen.data.ThemeMode
 import app.lumen.data.byCategory
 import app.lumen.data.inMonth
+import app.lumen.data.newestFirst
 import app.lumen.data.parseAmount
 import app.lumen.data.plainAmount
+import app.lumen.data.readBackup
 import app.lumen.data.total
+import app.lumen.data.writeBackup
 import java.time.LocalDate
 import java.time.YearMonth
-import java.time.format.DateTimeFormatter
-import java.time.format.FormatStyle
-import java.time.format.TextStyle
-import java.util.Locale
-
-private fun monthTitle(month: YearMonth): String {
-    val name = month.month.getDisplayName(TextStyle.FULL_STANDALONE, Locale.getDefault())
-    return name.replaceFirstChar { it.titlecase(Locale.getDefault()) } + " " + month.year
-}
 
 @Composable
-internal fun HomeScreen(expenses: List<Expense>, budget: Double, onAdd: () -> Unit, onBudget: () -> Unit) {
+private fun MonthNote(month: YearMonth, today: LocalDate) {
+    val current = YearMonth.from(today)
+    val text = when {
+        month == current -> {
+            val days = month.lengthOfMonth() - today.dayOfMonth
+            LocalContext.current.resources.getQuantityString(R.plurals.days_left, days, days)
+        }
+        month < current -> stringResource(R.string.month_closed)
+        else -> stringResource(R.string.month_ahead)
+    }
+    Text(text, color = palette.muted)
+}
+
+/** The dashboard for one month, with the full history underneath. The history is collapsed until it is asked for. */
+@Composable
+internal fun HomeScreen(
+    expenses: List<Expense>,
+    budget: Double,
+    month: YearMonth,
+    onMonth: (YearMonth) -> Unit,
+    onAdd: () -> Unit,
+    onBudget: () -> Unit,
+    onDelete: (String) -> Unit,
+) {
     val today = LocalDate.now()
-    val month = YearMonth.from(today)
     val spent = expenses.inMonth(month.toString()).total()
     val available = budget - spent
-    val daysLeft = month.lengthOfMonth() - today.dayOfMonth
-    Column(Modifier.verticalScroll(rememberScrollState()).padding(20.dp)) {
-        Heading(monthTitle(month), 28.sp)
-        Text(LocalContext.current.resources.getQuantityString(R.plurals.days_left, daysLeft, daysLeft), color = palette.muted)
-        BudgetRing(if (budget > 0) spent / budget else 0.0, money(available))
-        Row(Modifier.fillMaxWidth()) {
-            Stat(stringResource(R.string.budget), money(budget), Modifier.weight(1f), onBudget)
-            Stat(stringResource(R.string.spent), money(spent), Modifier.weight(1f))
-            Stat(stringResource(R.string.available), money(available), Modifier.weight(1f))
+    var historyOpen by rememberSaveable { mutableStateOf(false) }
+    val history = remember(expenses) { expenses.newestFirst() }
+    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(Dimens.screen)) {
+        item { MonthHeader(month, onMonth) }
+        item { MonthNote(month, today) }
+        item { BudgetRing(if (budget > 0) spent / budget else 0.0, money(available)) }
+        item {
+            Row(Modifier.fillMaxWidth()) {
+                Stat(stringResource(R.string.budget), money(budget), Modifier.weight(1f), onBudget)
+                Stat(stringResource(R.string.spent), money(spent), Modifier.weight(1f))
+                Stat(stringResource(R.string.available), money(available), Modifier.weight(1f))
+            }
         }
-        if (budget <= 0) PromptCard(stringResource(R.string.set_budget), stringResource(R.string.set_budget_hint), onBudget)
-        if (expenses.isEmpty()) PromptCard(stringResource(R.string.add_first), stringResource(R.string.add_first_hint), onAdd)
+        if (budget <= 0) item { PromptCard(stringResource(R.string.set_budget), stringResource(R.string.set_budget_hint), onBudget) }
+        if (expenses.isEmpty()) item { PromptCard(stringResource(R.string.add_first), stringResource(R.string.add_first_hint), onAdd) }
         if (expenses.isNotEmpty()) {
-            Heading(stringResource(R.string.recent), 22.sp, Modifier.padding(top = 18.dp, bottom = 8.dp))
-            expenses.sortedByDescending { it.date }.take(4).forEach { e ->
-                TxRow(e.title, "\u2212" + money(e.amount, 2), categoryName(e.category))
+            item { HistoryHeader(history.size, historyOpen) { historyOpen = !historyOpen } }
+            if (historyOpen) {
+                items(history, key = { it.id }) { e ->
+                    TxRow(
+                        e.title,
+                        "\u2212" + money(e.amount, 2),
+                        categoryName(e.category) + " \u00B7 " + shortDate(e.date),
+                        trailing = { DeleteLink { onDelete(e.id) } },
+                    )
+                }
             }
         }
     }
 }
 
 @Composable
-internal fun HistoryScreen(expenses: List<Expense>, onDelete: (String) -> Unit) {
-    val dateFormat = DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM)
-    Detail(stringResource(R.string.nav_history)) {
-        if (expenses.isEmpty()) Text(stringResource(R.string.no_expenses), color = palette.muted)
-        expenses.sortedByDescending { it.date }.forEach { e ->
-            val date = runCatching { LocalDate.parse(e.date).format(dateFormat) }.getOrDefault(e.date)
-            TxRow(
-                e.title,
-                "\u2212" + money(e.amount, 2),
-                categoryName(e.category) + " \u00B7 " + date,
-                trailing = {
-                    val label = stringResource(R.string.delete)
-                    Text(
-                        "\u2715",
-                        color = palette.muted,
-                        modifier = Modifier
-                            .padding(start = 8.dp)
-                            .semantics { contentDescription = label }
-                            .clickable { onDelete(e.id) }
-                            .padding(8.dp),
-                    )
-                },
-            )
-        }
+private fun HistoryHeader(count: Int, open: Boolean, onToggle: () -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().padding(top = 18.dp).heightIn(min = Dimens.touch).clickable(role = Role.Button, onClick = onToggle),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Heading(stringResource(R.string.history), 22.sp, Modifier.weight(1f))
+        Text(count.toString(), color = palette.muted)
+        Text(if (open) "  \u25B4" else "  \u25BE", color = palette.muted)
     }
 }
 
 @Composable
-internal fun InsightsScreen(expenses: List<Expense>) {
-    val month = YearMonth.now()
+internal fun InsightsScreen(expenses: List<Expense>, month: YearMonth, onMonth: (YearMonth) -> Unit) {
     val spent = expenses.inMonth(month.toString())
     val total = spent.total()
-    Detail(stringResource(R.string.nav_insights), monthTitle(month)) {
+    Detail(stringResource(R.string.nav_insights)) {
+        MonthHeader(month, onMonth, 20.sp)
         Heading(money(total, 2), 36.sp)
         Text(stringResource(R.string.total_spending), color = palette.muted)
         if (spent.isEmpty()) Text(stringResource(R.string.nothing_spent), color = palette.muted, modifier = Modifier.padding(top = 16.dp))
@@ -129,7 +145,26 @@ internal fun InsightsScreen(expenses: List<Expense>) {
 }
 
 @Composable
-internal fun SettingsScreen(currency: Currency, theme: ThemeMode, onCurrency: (Currency) -> Unit, onTheme: (ThemeMode) -> Unit) {
+internal fun SettingsScreen(
+    currency: Currency,
+    theme: ThemeMode,
+    ledger: Ledger,
+    onCurrency: (Currency) -> Unit,
+    onTheme: (ThemeMode) -> Unit,
+    onRestore: (Ledger) -> Unit,
+) {
+    val context = LocalContext.current
+    var status by remember { mutableStateOf<Int?>(null) }
+    var pending by remember { mutableStateOf<Ledger?>(null) }
+    val save = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
+        if (uri != null) status = if (writeBackup(context, uri, ledger, LocalDate.now())) R.string.backup_done else R.string.backup_failed
+    }
+    val open = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) {
+            val read = readBackup(context, uri)
+            if (read == null) status = R.string.restore_invalid else pending = read
+        }
+    }
     Detail(stringResource(R.string.nav_settings)) {
         Text(stringResource(R.string.settings_blurb), color = palette.muted)
         Heading(stringResource(R.string.currency), 18.sp, Modifier.padding(top = 20.dp))
@@ -150,6 +185,21 @@ internal fun SettingsScreen(currency: Currency, theme: ThemeMode, onCurrency: (C
                 Choice(stringResource(label), m == theme, Modifier.weight(1f)) { onTheme(m) }
             }
         }
+        Heading(stringResource(R.string.backup), 18.sp, Modifier.padding(top = 20.dp))
+        Text(stringResource(R.string.backup_help), color = palette.muted, fontSize = 13.sp)
+        Row(Modifier.fillMaxWidth().padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Choice(stringResource(R.string.backup_save), false, Modifier.weight(1f)) { save.launch("lumen-${LocalDate.now()}.json") }
+            Choice(stringResource(R.string.backup_restore), false, Modifier.weight(1f)) { open.launch(arrayOf("*/*")) }
+        }
+        status?.let { Text(stringResource(it), color = palette.muted, modifier = Modifier.padding(top = 10.dp)) }
+    }
+    pending?.let { incoming ->
+        FormDialog(
+            stringResource(R.string.restore_title),
+            stringResource(R.string.restore),
+            { onRestore(incoming); status = R.string.restore_done; pending = null },
+            { pending = null },
+        ) { Text(stringResource(R.string.restore_ask), color = palette.muted) }
     }
 }
 
@@ -158,28 +208,12 @@ internal fun AddScreen(onClose: () -> Unit, onSave: (title: String, amount: Doub
     var title by rememberSaveable { mutableStateOf("") }
     var amount by rememberSaveable { mutableStateOf("") }
     var category by rememberSaveable { mutableStateOf("Food & Drink") }
-    val colors = fieldColors()
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp)) {
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(Dimens.screen)) {
         CloseLink(onClose)
         Heading(stringResource(R.string.new_expense), 28.sp, Modifier.padding(vertical = 12.dp))
-        OutlinedTextField(
-            amount,
-            { amount = it },
-            label = { Text(stringResource(R.string.amount)) },
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-            colors = colors,
-            modifier = Modifier.fillMaxWidth(),
-        )
+        Field(amount, stringResource(R.string.amount), { amount = it }, KeyboardType.Decimal)
         Spacer(Modifier.height(8.dp))
-        OutlinedTextField(
-            title,
-            { title = it },
-            label = { Text(stringResource(R.string.name)) },
-            singleLine = true,
-            colors = colors,
-            modifier = Modifier.fillMaxWidth(),
-        )
+        Field(title, stringResource(R.string.name), { title = it })
         Spacer(Modifier.height(12.dp))
         CATEGORIES.forEach { id ->
             val selected = id == category
@@ -204,18 +238,10 @@ internal fun AddScreen(onClose: () -> Unit, onSave: (title: String, amount: Doub
 @Composable
 internal fun BudgetScreen(current: Double, onClose: () -> Unit, onSave: (Double) -> Unit) {
     var text by rememberSaveable { mutableStateOf(if (current > 0) plainAmount(current) else "") }
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp)) {
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(Dimens.screen)) {
         CloseLink(onClose)
         Heading(stringResource(R.string.monthly_budget), 28.sp, Modifier.padding(vertical = 12.dp))
-        OutlinedTextField(
-            text,
-            { text = it },
-            label = { Text(stringResource(R.string.budget)) },
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-            colors = fieldColors(),
-            modifier = Modifier.fillMaxWidth(),
-        )
+        Field(text, stringResource(R.string.budget), { text = it }, KeyboardType.Decimal)
         Spacer(Modifier.height(12.dp))
         Button(
             onClick = {

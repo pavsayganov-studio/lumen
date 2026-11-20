@@ -5,6 +5,7 @@ import {
   CURRENCIES,
   CURRENCY_IDS,
   budgetOf,
+  defaultCurrency,
   emptyData,
   planBills,
   projectPlan,
@@ -208,5 +209,19 @@ describe("saved data from earlier versions", () => {
     const own = dropSampleData({ start: "own", transactions: [{ id: "t1" }], localeMode: "be" }) as Record<string, unknown>;
     assert.equal((own.transactions as unknown[]).length, 1);
     assert.equal("start" in own, false);
+  });
+});
+
+describe("default currency", () => {
+  it("follows the device language", () => {
+    assert.equal(defaultCurrency("ru-RU"), "RUB");
+    assert.equal(defaultCurrency("ru"), "RUB");
+    assert.equal(defaultCurrency("en-US"), "USD");
+    assert.equal(defaultCurrency("en"), "USD");
+    assert.equal(defaultCurrency("be"), "BYN");
+    assert.equal(defaultCurrency("be-BY"), "BYN");
+    assert.equal(defaultCurrency("ru-BY"), "BYN");
+    assert.equal(defaultCurrency("de-DE"), "EUR");
+    assert.equal(defaultCurrency(""), "EUR");
   });
 });

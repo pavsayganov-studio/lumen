@@ -7,6 +7,10 @@ data class Expense(
     /** ISO date, yyyy-MM-dd. */
     val date: String,
     val category: String,
+    /** Set when this expense is a payment for a project. */
+    val projectId: String? = null,
+    /** Set when the payment settles one planned row of that project (the row's id). */
+    val planRef: String? = null,
 )
 
 /** Stable ids saved with each expense. The UI maps them to names in the phone's language. */
@@ -24,3 +28,6 @@ fun List<Expense>.inMonth(month: String): List<Expense> = filter { it.date.start
 /** Spend per category, biggest first. */
 fun List<Expense>.byCategory(): List<Pair<String, Double>> =
     groupBy { it.category }.map { (category, items) -> category to items.total() }.sortedByDescending { it.second }
+
+/** Newest date first; on the same day the expense added last comes first. */
+fun List<Expense>.newestFirst(): List<Expense> = asReversed().sortedByDescending { it.date }

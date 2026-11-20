@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.0
+
+- Android: Projects tab for big purchases (home, car, trip, other) with price, target date, payment schedule, balance due and Pay buttons that record real expenses.
+- Android: Home shows one month; tap the title to pick any month and year (Insights follows). History moved under the dashboard, collapsed by default, with delete.
+- Android: the bottom bar stays on every screen; Add is a large raised accent button.
+- Android: backup and restore through one JSON file. Unreadable saved data is kept instead of overwritten.
+- First-launch currency follows the device: Belarusian BYN, Russian RUB, English USD, otherwise EUR. Web and Android.
+- Web asks the browser for persistent storage. Design system documented in DESIGN.md; rules in AGENTS.md (CLAUDE.md points to it).
+
 ## 0.1.0
 
 - Sample data is gone from web and Android. The app opens empty on the real date; Home asks for a budget and a first transaction. Sample data saved by earlier versions is dropped on load.

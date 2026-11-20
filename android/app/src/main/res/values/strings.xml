@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="nav_home">Home</string>
-    <string name="nav_history">History</string>
     <string name="nav_add">Add</string>
     <string name="nav_insights">Insights</string>
     <string name="nav_settings">Settings</string>
@@ -16,8 +15,6 @@
     <string name="set_budget_hint">Then Lumen shows what is left to spend.</string>
     <string name="add_first">Add your first expense</string>
     <string name="add_first_hint">Everything stays on this phone.</string>
-    <string name="recent">Recent</string>
-    <string name="no_expenses">No expenses yet.</string>
     <string name="new_expense">New expense</string>
     <string name="amount">Amount</string>
     <string name="name">Name</string>
@@ -43,4 +40,50 @@
         <item quantity="one">%d day left</item>
         <item quantity="other">%d days left</item>
     </plurals>
+    <string name="history">History</string>
+    <string name="nav_projects">Projects</string>
+    <string name="month_closed">Month closed</string>
+    <string name="month_ahead">Not started yet</string>
+    <string name="pick_month">Choose month</string>
+    <string name="year_prev">Previous year</string>
+    <string name="year_next">Next year</string>
+    <string name="projects_empty">Plan a big purchase</string>
+    <string name="projects_empty_hint">A flat, a car or a trip: set the price and the payments.</string>
+    <string name="new_project">New project</string>
+    <string name="edit_project">Edit project</string>
+    <string name="kind_home">Home</string>
+    <string name="kind_car">Car</string>
+    <string name="kind_trip">Trip</string>
+    <string name="kind_other">Other</string>
+    <string name="price">Price</string>
+    <string name="target_date">Target date (optional)</string>
+    <string name="clear">Clear</string>
+    <string name="paid">Paid</string>
+    <string name="balance_due">Balance due</string>
+    <string name="plan">Payment schedule</string>
+    <string name="payments">Payments</string>
+    <string name="pay">Pay</string>
+    <string name="due">Due</string>
+    <string name="next_payment">Next payment</string>
+    <string name="add_payment">Add payment</string>
+    <string name="add_cost">Add planned cost</string>
+    <string name="split_balance">Split the balance into payments</string>
+    <string name="parts">Number of payments</string>
+    <string name="first_payment">First payment</string>
+    <string name="date">Date</string>
+    <string name="need_monthly">Set aside %1$s a month to meet the target date.</string>
+    <string name="delete_project">Delete project</string>
+    <string name="delete_project_ask">Payments stay in your history.</string>
+    <string name="cancel">Cancel</string>
+    <string name="backup">Backup</string>
+    <string name="backup_help">Save everything to one file, or restore it on another phone. The file is not encrypted: keep it private.</string>
+    <string name="backup_save">Save to file</string>
+    <string name="backup_restore">Restore from file</string>
+    <string name="backup_done">Backup saved.</string>
+    <string name="backup_failed">Could not write the file.</string>
+    <string name="restore_done">Data restored.</string>
+    <string name="restore_invalid">This is not a Lumen backup.</string>
+    <string name="restore_title">Replace data on this phone?</string>
+    <string name="restore_ask">Everything saved here now is replaced by the backup.</string>
+    <string name="restore">Restore</string>
 </resources>

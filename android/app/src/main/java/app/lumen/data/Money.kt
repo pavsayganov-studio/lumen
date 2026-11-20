@@ -14,6 +14,14 @@ enum class Currency(val symbol: String, val before: Boolean, val group: Char, va
     BYN("Br", false, '\u00A0', ','),
 }
 
+/** Currency for a first launch: Belarusian language or region is BYN, Russian is RUB, English is USD, anything else EUR. */
+fun currencyFor(locale: Locale): Currency = when {
+    locale.country == "BY" || locale.language == "be" -> Currency.BYN
+    locale.language == "ru" -> Currency.RUB
+    locale.language == "en" -> Currency.USD
+    else -> Currency.EUR
+}
+
 /** "1.332 €", "$1,332.50" or "1 332,50 Br". Negative values get a real minus sign. */
 fun formatMoney(value: Double, currency: Currency, digits: Int = if (abs(value % 1.0) < 0.001) 0 else 2): String {
     val symbols = DecimalFormatSymbols(Locale.ROOT).apply {

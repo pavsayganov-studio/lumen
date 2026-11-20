@@ -1,6 +1,6 @@
 {
   "name": "app-builder-workspace",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "sideEffects": false,
   "type": "module",
   "overrides": {
@@ -18,7 +18,7 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "pack": "npx --yes repomix --config repomix.config.json",
-    "pack:android": "npx --yes repomix --config repomix.config.json --include \"android/**,.github/**,CLAUDE.md\" -o repomix-android.xml"
+    "pack:android": "npx --yes repomix --config repomix.config.json --include \"android/**,.github/**,AGENTS.md,DESIGN.md\" -o repomix-android.xml"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.4",

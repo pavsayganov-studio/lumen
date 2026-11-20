@@ -39,8 +39,24 @@ Restore replaces accounts, transactions, budgets, allocations, projects, month a
 
 ## Android
 
-`android/`, `.github/workflows/android.yml` (pull requests and manual) and `.github/workflows/release.yml` (tag `vX.Y.Z`, signed APK, GitHub release). Code: `data/` (model, money, storage) and `ui/` (theme, components, screens). Strings: `res/values`, `values-ru`, `values-be`. Versions: `android/gradle/libs.versions.toml`. It is a smaller mirror: expenses, budget, currency and theme in SharedPreferences (`lumen`); no projects or backup. The release keystore is never in git: secrets `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`.
+`android/`, `.github/workflows/android.yml` (pull requests and manual) and `.github/workflows/release.yml` (tag `vX.Y.Z`, signed APK, GitHub release). Code: `data/` (model, projects, money, storage, backup) and `ui/` (theme, dimens, components, controls, nav bar, screens). Strings: `res/values`, `values-ru`, `values-be`. Versions: `android/gradle/libs.versions.toml`. The release keystore is never in git: secrets `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`.
+
+Version 0.2.0 (rules in `AGENTS.md`, look in `DESIGN.md`):
+
+- Bottom bar: Home, Projects, raised accent Add button, Insights, Settings. It stays visible on Add, Budget and the project editors.
+- Home is the dashboard of the selected month. Tap the month title to pick a month and year; Insights follows the same month. History moved under the dashboard, collapsed by default; expanded it lists all expenses newest first and deletes in place. The History tab is gone.
+- Projects tab (`data/Projects.kt`, `ui/ProjectScreens.kt`): price, optional target date, schedule of dated payments. Pay records a real expense with `projectId` and `planRef`; balance due = price minus recorded payments; nothing is paid by date. Split the balance replaces unpaid rows with N monthly payments. Deleting a payment un-pays its row; deleting a project keeps its payments.
+- Storage: SharedPreferences `lumen`. Unreadable saved text is copied to `unreadable_<key>` before any save, so a bad parse can no longer wipe the data. Ids are de-duplicated on load (they are list keys). `allowBackup` stays false.
+- Backup (Settings): readable JSON file through the system file picker. `{app, version: 1, exported, budget, expenses, projects}`. Restore asks first, then replaces budget, expenses and projects. Not encrypted. Not interchangeable with the web `LUMEN1` code.
+- Default currency on first launch: Belarusian language or region BY gives BYN, Russian RUB, English USD, else EUR; saved once. Web does the same through `defaultCurrency` when no currency was saved. Phones that never chose a currency and run Russian or English change from the old EUR default; nothing is converted.
+- Web: `keepStorage()` asks the browser for persistent storage after the data loads.
+- Not built here: Android compiles only in CI. Run **Android APK** by hand on this branch before tagging `v0.2.0`.
+- Known trade-off: with the keyboard open on the Add screen the bar sits above the keyboard and takes some room.
+
+## Play Protect
+
+Play Protect scans apps installed outside Google Play and can ask for a scan or warn; code cannot switch it off. Developer verification (registered developer and key) is enforced from September 2026 in Brazil, Indonesia, Singapore and Thailand, worldwide from 2027. For personal use, register `app.lumen` with the release key as limited distribution in the Android Developer Console (free, no ID, up to 20 devices), or later publish on Google Play. Always install the release APK, never a debug one, and never change the key or package: an update with a different key cannot install over the old app and uninstalling erases the data.
 
 ## Checks
 
-`npm run typecheck` and `npm run build`. The first launch must show an empty Home with the budget and first-transaction prompts.
+`npm run typecheck`, `npm test` and `npm run build`. The first launch must show an empty Home with the budget and first-transaction prompts.

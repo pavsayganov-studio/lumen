@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import {
   cents,
+  defaultCurrency,
   emptyData,
   euros,
   postedSpend,
@@ -20,6 +21,11 @@ import {
 import type { Snapshot } from "./backup.ts";
 
 export type LocaleMode = "auto" | "en" | "ru" | "be";
+
+/** Asks the browser not to evict the saved data when storage runs low. */
+export function keepStorage() {
+  if (typeof navigator !== "undefined") void Promise.resolve(navigator.storage?.persist?.()).catch(() => {});
+}
 
 export type ThemeMode = "auto" | "light" | "dark";
 
@@ -213,7 +219,7 @@ export const useFinance = create<FinanceState>()(
       migrate: (persisted) => dropSampleData(persisted),
       merge: (persisted, current) => {
         const saved = (persisted ?? {}) as Partial<FinanceState>;
-        const currency = saved.currency ?? "EUR";
+        const currency = saved.currency ?? defaultCurrency(typeof navigator === "undefined" ? "" : navigator.language);
         setCurrency(currency);
         const order = [...(saved.insightOrder ?? current.insightOrder)];
         for (const id of INSIGHT_ORDER) if (!order.includes(id)) order.push(id);
