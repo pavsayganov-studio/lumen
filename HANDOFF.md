@@ -75,13 +75,7 @@ Rules are in `AGENTS.md`; look in `DESIGN.md`. Android only: the web client is u
 
 ## Spec 0.3.0 (docs only, nothing built)
 
-`docs/ai/` holds the 0.3.0 spec, strings and phase plan. Decisions waiting for the owner are in SPEC section 11:
-- HD-1 hosting origin for Pages (every Pages site of one account shares `github.io` storage).
-- HD-3 and HD-5 the web passphrase code (`LUMEN1P.`) and the `LUMEN1.` prefix, which v3 codes reuse with a different payload.
-- HD-4 the web model has accounts, income, transfers and per-month budgets that v3 does not carry.
-- HD-6 Android has no unit-test dependency; Kotlin golden tests need one.
-- HD-7 Pages needs a static web build; today it is Nitro `vercel`.
-The Pages workflow is not added yet: it belongs to phase P1, after HD-7.
+`docs/ai/` holds the 0.3.0 spec, strings and phase plan; the owner's decisions are in `docs/ai/DECISIONS.md`. Next: phase P1 (Pages build, PWA essentials).
 
 ## Checks
 

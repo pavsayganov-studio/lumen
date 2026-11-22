@@ -3,11 +3,11 @@
 Each phase ships as one or more patch scripts (`lumen_patch_NNNN_slug.py`), pushed to main in the order below, with tests. Acceptance is checked before the next phase starts. After an Android patch run **Android APK** by hand on main. P3 and P4 may go in either order; P6 splits into P6a and P6b. Requirement ids (CRUD-1, XFER-5, ...) are in `SPEC-0.3.0.md`.
 
 ## Before P1: decisions
-Recon is done (SPEC 0.1). Settle HD-1, HD-4, HD-6 and HD-7 first; the rest have defaults.
+Settled in `DECISIONS.md` (D-1 to D-7). P2 to P4 carry the wider v3 scope from D-4 (accounts, incomes, transfers, per-month budgets).
 
 ## P1 — PWA on GitHub Pages (ship the current web first)
 REQ: PWA-1 to PWA-10, `storage.*` and `pwa.*` strings.
-Steps: static build (HD-7); base path via `LUMEN_BASE`; relative manifest and service worker; icons; prompt-based update; CSP meta; Data screen storage block; README Deploy section; add `.github/workflows/pages.yml` (Node from `.nvmrc`; check every action version on its release page, `android.yml` shows what the repo uses today).
+Steps: static target beside the Vercel build (D-7); base path via `LUMEN_BASE`; relative manifest and service worker; icons; prompt-based update; CSP meta; Data screen storage block; README Deploy section; add `.github/workflows/pages.yml` (Node from `.nvmrc`; check every action version on its release page, `android.yml` shows what the repo uses today).
 Accept: opens under `/<repo>/`; installable (Lighthouse PWA checks); works offline after the first load; the update prompt appears after a new deploy; no CSP violations; the Network tab shows only same-origin requests.
 
 ## P2 — Data contract v3 and migration (shared)

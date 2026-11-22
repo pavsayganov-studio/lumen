@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Docs: owner decisions D-1 to D-7 in `docs/ai/DECISIONS.md`. `npm run pack` now includes `scripts/`, `server/` and `.github/`.
 - Docs: 0.3.0 spec in `docs/ai/` (data format v3, edit and delete, category management, budget per currency, file and code transfer, GitHub Pages, GEL). Nothing is built yet.
 - Android: each expense and project has its own currency. Added Kazakh tenge, Uzbek sum, Azerbaijani manat, Armenian dram, Kyrgyz som and Tajik somoni. Home and Insights have a currency menu (Total or one currency) in the upper-right corner.
 - Android: reporting period on Home and Insights. The current month by default; tap the title for another month or a date range from the calendar. History follows the period and currency.

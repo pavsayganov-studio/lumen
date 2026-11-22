@@ -1,6 +1,7 @@
 # Lumen 0.3.0 — Technical Specification
 
 Status: proposed, nothing built yet · 2026-11-22
+Owner decisions of 2026-11-22 are in `DECISIONS.md` and win over this text where they differ.
 Audience: the coding agent (Claude in chat or Claude Code). Delivery follows `AGENTS.md`: one patch script per change, pushed to main.
 
 
@@ -52,7 +53,7 @@ Terms: primary currency (setting), active currency (what Home shows, persisted),
 | XFER | File / text-code transfer (backup = transfer) | P7 |
 | GEL, REM | GEL currency, backup reminder | P6 / P7 |
 
-Out of scope: WebRTC/QR/P2P, Gemini Nano/any AI, cloud sync, exchange rates, recurring payments, bank import, income tracking, export encryption, category budgets, voice. Do not build, stub or prepare UI for them.
+Out of scope: WebRTC/QR/P2P, Gemini Nano/any AI, cloud sync, exchange rates, recurring payments, bank import, category budgets, voice. Do not build, stub or prepare UI for them.
 
 ## 3. Data contract v3 (normative)
 
@@ -113,10 +114,18 @@ Rules:
 ```
 
 - File name: lumen-backup-YYYY-MM-DD.json, MIME application/json (plain .json for maximum messenger/email compatibility).
-- Text code: LUMEN1. + base64url (no padding) of gzip(UTF-8 JSON). Fallback when CompressionStream is unavailable: LUMEN0. + base64url of plain UTF-8 JSON. Import accepts file, LUMEN1., LUMEN0., and raw JSON pasted as text. Strip whitespace/newlines and surrounding quotes before parsing.
-- Legacy input also imports: web `LUMEN1.` (payload is the JSON `{v, sum, d}`), web `LUMEN1P.` (asks for the passphrase) and the Android file (`{app: "lumen-backup", version: 1 or 2}`). A `LUMEN1.` code is told apart by content: after base64url decoding, bytes 0x1F 0x8B are a v3 gzip payload and a leading `{` is the legacy envelope (HD-5).
+- Text code: LUMEN1. + base64url (no padding) of the envelope JSON `{v: 3, sum, d}` (see 3.1). Fallback when CompressionStream is unavailable: LUMEN0. + base64url of plain UTF-8 JSON. Import accepts file, LUMEN1., LUMEN0., and raw JSON pasted as text. Strip whitespace/newlines and surrounding quotes before parsing.
+- Legacy input also imports: web `LUMEN1.` (payload is the JSON `{v, sum, d}`), web `LUMEN1P.` (asks for the passphrase) and the Android file (`{app: "lumen-backup", version: 1 or 2}`). A `LUMEN1.` or `LUMEN1P.` code decodes to the envelope JSON; its `v` tells legacy (1) from v3 (3) (D-5).
 - Limits: file ≤ 20 MB; decompressed ≤ 50 MB (stream with a hard cap, to defend against decompression bombs). Text-code hint threshold: 3 500 chars (messenger limits). Text-code copy hard cap: 200 000 chars (clipboard/binder limits); above it, copy is disabled and the file is the only option.
 - Publish a JSON Schema for the envelope at shared/schema/lumen-v3.schema.json (documentation + test oracle).
+
+### 3.1 Amendments from DECISIONS.md (these win over the text above)
+
+- v3 also carries the web's own data, each record with Base: `accounts` (`name`, `kind`, `color`, `isDefault`, `openingMinor`, `currency`), `incomes` (like expenses, with `accountId`), `transfers` (`fromAccountId`, `toAccountId`, `amountMinor`, `currency`, `occurredOn`, optional `projectId` and `planRef`) and `allocations` (month, category, currency, `amountMinor`). Expenses gain optional `accountId` and `planRef`. Projects gain optional `savedMinor`, `monthlySaveMinor`, `downPaymentMinor`, `months`, `apr`, `start`, `notes`, `paidBefore`. Web records with no currency take the web's saved currency at migration.
+- Budgets: `budget:<currency>` is the standing default (`month: null`); `budget:<currency>:<YYYY-MM>` is a month entry. Effective budget for a month = the latest entry with month ≤ it, else the standing default, else 0. Web per-month budgets map 1:1 to month entries; Android's single number is the standing default; an Android budget edit writes the entry for the month in view.
+- Android stores what it has no screen for (`accounts`, `incomes`, `transfers`, `allocations`, unknown fields and collections) as JSON, reads only Base for merging, and writes it all back on export. Web → Android (merge, edit) → Web must lose nothing; a shared fixture proves it.
+- Web `month`, `insightOrder` and `hiddenInsights` live in `settings.web` and are applied only when a web file replaces web data.
+- Text codes: `LUMEN1.` and `LUMEN1P.` decode to the envelope JSON `{v, ...}` (`v` 1 = legacy web Snapshot, `v` 3 = v3 file). In a v3 code `d` is base64url of gzip(UTF-8 file JSON) and `sum` the SHA-256 prefix, as in legacy. Passphrase codes and files work on both platforms (D-3).
 
 ## 4. Migration
 
@@ -227,12 +236,6 @@ Human steps (document in README):
 | Future date moves the expense to another month | expense.date.future* |
 | Built-in categories cannot be renamed; other cannot be archived | category.builtin.hint, category.other.locked |
 
-## 11. Pending human decisions
+## 11. Decisions
 
-- HD-1 Hosting origin (custom domain or dedicated account) — see §8.
-- HD-2 Include BUD (budget per currency) in 0.3.0 or ship it as 0.3.1. Default: include; P6 is split so it can be cut.
-- HD-3 Password encryption of exports. Web already offers an optional passphrase (`LUMEN1P.`). Default: keep reading `LUMEN1P.`; v3 export has no passphrase in 0.3.0, and the web passphrase field goes away only when v3 export ships (log it). Alternative: keep it and wrap the v3 payload as `LUMEN1P.`.
-- HD-4 Web model gap. Web has accounts, income, transfers, allocations, per-month budgets and project fields (`saved`, `monthlySave`, `downPayment`, `months`, `apr`, `start`, `notes`, `paidBefore`) that v3 does not carry. Default: v3 carries expenses (web `kind: "expense"`), projects with costs, categories and budgets; the rest stays local to the web and is not transferred, with a visible note (new string). A budget migrates from the latest month's value, so older per-month overrides are lost. This is a lossy migration (R4 c): decide before P2.
-- HD-5 Code prefix. v3 text codes reuse `LUMEN1.` as planned; legacy web codes with the same prefix are told apart by content (section 3). Alternative: a new prefix `LUMEN3.`.
-- HD-6 Android tests. No test source set or test dependency exists. Kotlin golden tests need `junit` in `libs.versions.toml` (verify its version on the official release page) and a `testDebugUnitTest` step in `android.yml`. Default: approve a test-only dependency.
-- HD-7 Static web build. GitHub Pages needs static output; today the build is Nitro `vercel`. P1 changes `vite.config.ts` and the PWA head/manifest plumbing in `server/` and `scripts/grok-pwa-*`. Default: approved by this spec; a Vercel deploy, if one is in use, stops.
+Settled on 2026-11-22: see `DECISIONS.md` (D-1 to D-7). D-4 widens the data contract (3.1); D-3 and D-5 change the text-code rules (3.1).

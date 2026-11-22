@@ -11,12 +11,8 @@
     "useDefaultPatterns": true,
     "customPatterns": [
       ".grok/**",
-      ".github/dependabot.yml",
       "package-lock.json",
       "src/routeTree.gen.ts",
-      "public/__grok/**",
-      "server/**",
-      "scripts/**",
       "migrations/**",
       "src/lib/auth/**",
       "src/lib/app-data/**",
