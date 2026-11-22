@@ -1,5 +1,6 @@
 package app.lumen.ui
 
+import android.graphics.Paint
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -37,29 +38,38 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.lumen.R
+import app.lumen.data.Currency
 import app.lumen.data.formatMoney
 import kotlin.math.cos
 import kotlin.math.sin
 
-/** Amount in the chosen currency. */
+private val glyphCheck = Paint()
+
+/** The official sign, or the ISO code on a phone whose font lacks the glyph (the Kyrgyz som sign is new). */
+internal fun Currency.sign(): String = if (glyphCheck.hasGlyph(symbol)) symbol else name
+
+/** Amount in the currency of the surrounding screen (see [WithCurrency]). */
 @Composable
-internal fun money(value: Double, digits: Int? = null): String {
-    val currency = LocalCurrency.current
-    return if (digits == null) formatMoney(value, currency) else formatMoney(value, currency, digits)
-}
+internal fun money(value: Double, digits: Int? = null): String = money(value, LocalCurrency.current, digits)
+
+/** Amount in [currency]. */
+internal fun money(value: Double, currency: Currency, digits: Int? = null): String =
+    if (digits == null) formatMoney(value, currency, symbol = currency.sign()) else formatMoney(value, currency, digits, currency.sign())
 
 @Composable
-internal fun categoryName(id: String): String = stringResource(
-    when (id) {
+internal fun categoryName(id: String): String {
+    val builtIn = when (id) {
         "Housing" -> R.string.cat_housing
         "Savings" -> R.string.cat_savings
         "Transportation" -> R.string.cat_transport
         "Food & Drink" -> R.string.cat_food
+        "Shopping" -> R.string.cat_shopping
         "Entertainment" -> R.string.cat_fun
         "Health" -> R.string.cat_health
-        else -> R.string.cat_shopping
-    },
-)
+        else -> null
+    }
+    return if (builtIn != null) stringResource(builtIn) else LocalCategories.current.firstOrNull { it.id == id }?.name ?: id
+}
 
 @Composable
 internal fun Heading(text: String, size: TextUnit, modifier: Modifier = Modifier) {

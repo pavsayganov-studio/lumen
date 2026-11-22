@@ -34,7 +34,10 @@ Shopping `#8B7CFF`, Entertainment `#F6C445`, Health `#34D399`.
 ## Components
 - **Bottom bar**: four sections and one raised round Add button in the middle. Always visible. Selected = accent icon and label on a 16% accent indicator.
 - **Add button**: 64dp circle, accent gradient (`accentFrom → accentTo`), `onAccent` plus icon, accent glow, stands 20dp above the bar.
-- **Month title**: month and year with a ▾; tap opens a year stepper and a 3×4 month grid. Shared by Home and Insights.
+- **Period title**: month and year with a ▾, or a date range (one step smaller). Tap opens a year stepper and a 3×4 month grid; "Date range" opens the calendar (tap the first day, then the last). Shared by Home and Insights.
+- **Currency menu**: a field-style button (48dp, control radius, ink 6%) in the upper-right corner of Home and Insights, showing sign and ISO code or Total, with a ▾. The menu is a raised surface: Total first, then each currency in use; the current one in accent.
+- **Currency chips**: every currency by ISO code, four to a row, as Choice chips. Used in Settings, Add and the new-project form.
+- **Category list** (Add): built-in and custom categories as colored text rows; "+ New category" in accent below them; ✕ on a custom one nobody uses.
 - **History**: a collapsed section header with the count and ▾/▴; expanded rows show title, category · date, amount, and ✕ to delete.
 - **Progress bar**: 8dp, rounded, accent gradient on ink 8%. Used for a project's paid share.
 - **Row (`TxRow`)**: title truncates, amount stays; subtitle muted 13sp. Paid rows ✓ in good, due rows amount in danger.
@@ -46,3 +49,10 @@ Shopping `#8B7CFF`, Entertainment `#F6C445`, Health `#34D399`.
 - Android category colors now match web (Entertainment and Health had fallen back to Shopping's purple).
 - `Dimens` introduced for shared sizes; new code uses it instead of literals.
 - Raised accent Add button replaces the small outlined bar item.
+
+## Changes after 0.2.0
+- New token: **raised** surface (`Palette.raised`, ink at 10% over bg) for menus and anything floating one step above a card. Dialogs stay on bg.
+- Field-style button (48dp, control radius, ink 6%) is now the one look for a tappable value: dates, the currency menu.
+- A currency sign the phone's font cannot draw falls back to the ISO code, so no empty boxes in money. Chips always use the ISO code.
+- Custom category colors come from a fixed list of six, none equal to a built-in category color; the person picks a name, not a color.
+- Amounts of different currencies are never merged into one figure: each gets its own line, in the same size and weight.

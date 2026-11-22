@@ -8,6 +8,8 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
+import app.lumen.data.Category
 import app.lumen.data.Currency
 
 internal class Palette(
@@ -50,25 +52,38 @@ internal val LightPalette = Palette(
 
 private val LocalPalette = staticCompositionLocalOf { DarkPalette }
 
-/** The currency symbol shown next to amounts. Changing it never converts values. */
+/** The currency of the amounts being shown; the app's main currency until a screen says otherwise. Never converts values. */
 internal val LocalCurrency = staticCompositionLocalOf { Currency.EUR }
+
+/** The categories the person created. Built-in ones need no entry here. */
+internal val LocalCategories = staticCompositionLocalOf<List<Category>> { emptyList() }
 
 internal val palette: Palette
     @Composable @ReadOnlyComposable get() = LocalPalette.current
 
+/** Amounts inside [content] are shown in [currency]. */
 @Composable
-internal fun LumenTheme(dark: Boolean, currency: Currency, content: @Composable () -> Unit) {
+internal fun WithCurrency(currency: Currency, content: @Composable () -> Unit) {
+    CompositionLocalProvider(LocalCurrency provides currency, content = content)
+}
+
+/** Menus and other raised surfaces: ink at 10% over the background, one step above a card. */
+internal val Palette.raised: Color get() = ink.copy(alpha = 0.10f).compositeOver(bg)
+
+@Composable
+internal fun LumenTheme(dark: Boolean, currency: Currency, categories: List<Category>, content: @Composable () -> Unit) {
     val p = if (dark) DarkPalette else LightPalette
     val scheme = if (dark) {
         darkColorScheme(primary = p.accent, onPrimary = p.onAccent, background = p.bg, onBackground = p.ink, surface = p.bg, onSurface = p.ink, onSurfaceVariant = p.muted)
     } else {
         lightColorScheme(primary = p.accent, onPrimary = p.onAccent, background = p.bg, onBackground = p.ink, surface = p.bg, onSurface = p.ink, onSurfaceVariant = p.muted)
     }
-    CompositionLocalProvider(LocalPalette provides p, LocalCurrency provides currency) {
+    CompositionLocalProvider(LocalPalette provides p, LocalCurrency provides currency, LocalCategories provides categories) {
         MaterialTheme(colorScheme = scheme, content = content)
     }
 }
 
+@Composable
 internal fun categoryColor(category: String): Color = when (category) {
     "Housing" -> Color(0xFF2EE6C7)
     "Savings" -> Color(0xFFFF8A3D)
@@ -76,5 +91,6 @@ internal fun categoryColor(category: String): Color = when (category) {
     "Food & Drink" -> Color(0xFFE15CF0)
     "Entertainment" -> Color(0xFFF6C445)
     "Health" -> Color(0xFF34D399)
-    else -> Color(0xFF8B7CFF)
+    "Shopping" -> Color(0xFF8B7CFF)
+    else -> LocalCategories.current.firstOrNull { it.id == category }?.let { Color(it.color) } ?: Color(0xFF8B7CFF)
 }

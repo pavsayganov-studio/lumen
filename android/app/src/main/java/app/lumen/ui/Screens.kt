@@ -40,12 +40,18 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.lumen.R
 import app.lumen.data.CATEGORIES
+import app.lumen.data.Category
 import app.lumen.data.Currency
 import app.lumen.data.Expense
 import app.lumen.data.Ledger
 import app.lumen.data.ThemeMode
+import app.lumen.data.Period
 import app.lumen.data.byCategory
-import app.lumen.data.inMonth
+import app.lumen.data.byCurrency
+import app.lumen.data.canAdd
+import app.lumen.data.create
+import app.lumen.data.inCurrency
+import app.lumen.data.inPeriod
 import app.lumen.data.newestFirst
 import app.lumen.data.parseAmount
 import app.lumen.data.plainAmount
@@ -69,48 +75,78 @@ private fun MonthNote(month: YearMonth, today: LocalDate) {
     Text(text, color = palette.muted)
 }
 
-/** The dashboard for one month, with the full history underneath. The history is collapsed until it is asked for. */
+/** The currencies the menu offers: the main one, the one on screen and every one with an expense. */
+internal fun currenciesInUse(expenses: List<Expense>, main: Currency, shown: Currency?): List<Currency> =
+    Currency.entries.filter { c -> c == main || c == shown || expenses.any { it.currency == c } }
+
+/**
+ * The dashboard for the chosen period and currency, with the matching history underneath, collapsed until it is asked for.
+ * The budget ring needs a whole month in the main currency; every other view shows what was spent.
+ */
 @Composable
 internal fun HomeScreen(
     expenses: List<Expense>,
     budget: Double,
-    month: YearMonth,
-    onMonth: (YearMonth) -> Unit,
+    main: Currency,
+    period: Period,
+    shown: Currency?,
+    onPeriod: (Period) -> Unit,
+    onShown: (Currency?) -> Unit,
     onAdd: () -> Unit,
     onBudget: () -> Unit,
     onDelete: (String) -> Unit,
 ) {
     val today = LocalDate.now()
-    val spent = expenses.inMonth(month.toString()).total()
-    val available = budget - spent
+    val inView = remember(expenses, period, shown) { expenses.inPeriod(period).inCurrency(shown) }
+    val history = remember(inView) { inView.newestFirst() }
+    val month = period.month
     var historyOpen by rememberSaveable { mutableStateOf(false) }
-    val history = remember(expenses) { expenses.newestFirst() }
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(Dimens.screen)) {
-        item { MonthHeader(month, onMonth) }
-        item { MonthNote(month, today) }
-        item { BudgetRing(if (budget > 0) spent / budget else 0.0, money(available)) }
-        item {
-            Row(Modifier.fillMaxWidth()) {
-                Stat(stringResource(R.string.budget), money(budget), Modifier.weight(1f), onBudget)
-                Stat(stringResource(R.string.spent), money(spent), Modifier.weight(1f))
-                Stat(stringResource(R.string.available), money(available), Modifier.weight(1f))
+        item { ViewBar(period, shown, currenciesInUse(expenses, main, shown), onPeriod, onShown) }
+        if (shown == main && month != null) {
+            val spent = inView.total()
+            val available = budget - spent
+            item { MonthNote(month, today) }
+            item { BudgetRing(if (budget > 0) spent / budget else 0.0, money(available)) }
+            item {
+                Row(Modifier.fillMaxWidth()) {
+                    Stat(stringResource(R.string.budget), money(budget), Modifier.weight(1f), onBudget)
+                    Stat(stringResource(R.string.spent), money(spent), Modifier.weight(1f))
+                    Stat(stringResource(R.string.available), money(available), Modifier.weight(1f))
+                }
             }
+            if (budget <= 0) item { PromptCard(stringResource(R.string.set_budget), stringResource(R.string.set_budget_hint), onBudget) }
+        } else if (shown != null) {
+            item { SpentSummary(listOf(shown to inView.total())) }
+        } else {
+            item { SpentSummary(inView.byCurrency()) }
         }
-        if (budget <= 0) item { PromptCard(stringResource(R.string.set_budget), stringResource(R.string.set_budget_hint), onBudget) }
         if (expenses.isEmpty()) item { PromptCard(stringResource(R.string.add_first), stringResource(R.string.add_first_hint), onAdd) }
-        if (expenses.isNotEmpty()) {
+        if (expenses.isNotEmpty() && inView.isEmpty()) {
+            item { Text(stringResource(R.string.nothing_spent), color = palette.muted, modifier = Modifier.padding(top = 16.dp)) }
+        }
+        if (inView.isNotEmpty()) {
             item { HistoryHeader(history.size, historyOpen) { historyOpen = !historyOpen } }
             if (historyOpen) {
                 items(history, key = { it.id }) { e ->
                     TxRow(
                         e.title,
-                        "\u2212" + money(e.amount, 2),
+                        "\u2212" + money(e.amount, e.currency, 2),
                         categoryName(e.category) + " \u00B7 " + shortDate(e.date),
                         trailing = { DeleteLink { onDelete(e.id) } },
                     )
                 }
             }
         }
+    }
+}
+
+/** What was spent, one big figure per currency. Currencies are listed side by side, never added. */
+@Composable
+private fun SpentSummary(rows: List<Pair<Currency, Double>>) {
+    Column(Modifier.fillMaxWidth().padding(vertical = 28.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(stringResource(R.string.spent), color = palette.muted)
+        rows.forEach { (currency, amount) -> Heading(money(amount, currency), 40.sp) }
     }
 }
 
@@ -127,18 +163,27 @@ private fun HistoryHeader(count: Int, open: Boolean, onToggle: () -> Unit) {
 }
 
 @Composable
-internal fun InsightsScreen(expenses: List<Expense>, month: YearMonth, onMonth: (YearMonth) -> Unit) {
-    val spent = expenses.inMonth(month.toString())
-    val total = spent.total()
+internal fun InsightsScreen(
+    expenses: List<Expense>,
+    main: Currency,
+    period: Period,
+    shown: Currency?,
+    onPeriod: (Period) -> Unit,
+    onShown: (Currency?) -> Unit,
+) {
+    val spent = expenses.inPeriod(period).inCurrency(shown)
     Detail(stringResource(R.string.nav_insights)) {
-        MonthHeader(month, onMonth, 20.sp)
-        Heading(money(total, 2), 36.sp)
-        Text(stringResource(R.string.total_spending), color = palette.muted)
+        ViewBar(period, shown, currenciesInUse(expenses, main, shown), onPeriod, onShown, 20.sp)
         if (spent.isEmpty()) Text(stringResource(R.string.nothing_spent), color = palette.muted, modifier = Modifier.padding(top = 16.dp))
-        spent.byCategory().forEach { (category, amount) ->
-            TxRow("\u25CF  " + categoryName(category), money(amount, 2), titleColor = categoryColor(category))
-            Box(Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(3.dp)).background(palette.ink.copy(alpha = 0.08f))) {
-                Box(Modifier.fillMaxWidth((amount / total).toFloat().coerceIn(0f, 1f)).height(6.dp).background(categoryColor(category)))
+        // One block per currency: categories are compared inside a currency, never across.
+        spent.byCurrency().forEach { (currency, total) ->
+            Heading(money(total, currency, 2), 36.sp, Modifier.padding(top = 12.dp))
+            Text(stringResource(R.string.total_spending), color = palette.muted)
+            spent.filter { it.currency == currency }.byCategory().forEach { (category, amount) ->
+                TxRow("\u25CF  " + categoryName(category), money(amount, currency, 2), titleColor = categoryColor(category))
+                Box(Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(3.dp)).background(palette.ink.copy(alpha = 0.08f))) {
+                    Box(Modifier.fillMaxWidth((amount / total).toFloat().coerceIn(0f, 1f)).height(6.dp).background(categoryColor(category)))
+                }
             }
         }
     }
@@ -161,7 +206,7 @@ internal fun SettingsScreen(
     }
     val open = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) {
-            val read = readBackup(context, uri)
+            val read = readBackup(context, uri, currency)
             if (read == null) status = R.string.restore_invalid else pending = read
         }
     }
@@ -169,11 +214,7 @@ internal fun SettingsScreen(
         Text(stringResource(R.string.settings_blurb), color = palette.muted)
         Heading(stringResource(R.string.currency), 18.sp, Modifier.padding(top = 20.dp))
         Text(stringResource(R.string.currency_help), color = palette.muted, fontSize = 13.sp)
-        Row(Modifier.fillMaxWidth().padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Currency.entries.forEach { c ->
-                Choice(c.symbol + " " + c.name, c == currency, Modifier.weight(1f)) { onCurrency(c) }
-            }
-        }
+        Box(Modifier.padding(top = 10.dp)) { CurrencyChoices(currency, onCurrency) }
         Heading(stringResource(R.string.theme), 18.sp, Modifier.padding(top = 20.dp))
         Row(Modifier.fillMaxWidth().padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             ThemeMode.entries.forEach { m ->
@@ -204,34 +245,83 @@ internal fun SettingsScreen(
 }
 
 @Composable
-internal fun AddScreen(onClose: () -> Unit, onSave: (title: String, amount: Double, category: String) -> Unit) {
+internal fun AddScreen(
+    expenses: List<Expense>,
+    categories: List<Category>,
+    startCurrency: Currency,
+    onClose: () -> Unit,
+    onNewCategory: (Category) -> Unit,
+    onDeleteCategory: (String) -> Unit,
+    onSave: (title: String, amount: Double, category: String, currency: Currency) -> Unit,
+) {
     var title by rememberSaveable { mutableStateOf("") }
     var amount by rememberSaveable { mutableStateOf("") }
     var category by rememberSaveable { mutableStateOf("Food & Drink") }
+    var currency by rememberSaveable { mutableStateOf(startCurrency) }
+    var adding by rememberSaveable { mutableStateOf(false) }
+    // A category you made can be removed again until an expense uses it.
+    val used = remember(expenses) { expenses.map { it.category }.toSet() }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(Dimens.screen)) {
         CloseLink(onClose)
         Heading(stringResource(R.string.new_expense), 28.sp, Modifier.padding(vertical = 12.dp))
         Field(amount, stringResource(R.string.amount), { amount = it }, KeyboardType.Decimal)
         Spacer(Modifier.height(8.dp))
+        CurrencyChoices(currency) { currency = it }
+        Spacer(Modifier.height(8.dp))
         Field(title, stringResource(R.string.name), { title = it })
         Spacer(Modifier.height(12.dp))
-        CATEGORIES.forEach { id ->
+        (CATEGORIES + categories.map { it.id }).forEach { id ->
             val selected = id == category
-            Text(
-                if (selected) "\u25CF  " + categoryName(id) else categoryName(id),
-                color = if (selected) categoryColor(id) else palette.muted,
-                fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
-                modifier = Modifier.fillMaxWidth().clickable { category = id }.padding(vertical = 12.dp),
-            )
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    if (selected) "\u25CF  " + categoryName(id) else categoryName(id),
+                    color = if (selected) categoryColor(id) else palette.muted,
+                    fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
+                    modifier = Modifier.weight(1f).clickable { category = id }.padding(vertical = 12.dp),
+                )
+                if (id !in CATEGORIES && id !in used) {
+                    DeleteLink {
+                        if (category == id) category = "Food & Drink"
+                        onDeleteCategory(id)
+                    }
+                }
+            }
         }
+        Text(
+            "+  " + stringResource(R.string.new_category),
+            color = palette.accent,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.fillMaxWidth().heightIn(min = Dimens.touch).clickable { adding = true }.padding(vertical = 12.dp),
+        )
         Spacer(Modifier.height(12.dp))
         Button(
             onClick = {
                 val value = parseAmount(amount)
-                if (value != null && value > 0 && title.isNotBlank()) onSave(title.trim(), value, category)
+                if (value != null && value > 0 && title.isNotBlank()) onSave(title.trim(), value, category, currency)
             },
             modifier = Modifier.fillMaxWidth(),
         ) { Text(stringResource(R.string.save_expense)) }
+    }
+    if (adding) {
+        NewCategoryDialog(
+            categories,
+            onCreate = { created -> onNewCategory(created); category = created.id; adding = false },
+            onDismiss = { adding = false },
+        )
+    }
+}
+
+@Composable
+private fun NewCategoryDialog(categories: List<Category>, onCreate: (Category) -> Unit, onDismiss: () -> Unit) {
+    var name by rememberSaveable { mutableStateOf("") }
+    FormDialog(
+        stringResource(R.string.new_category),
+        stringResource(R.string.save),
+        { if (categories.canAdd(name)) onCreate(categories.create("c${System.currentTimeMillis()}", name)) },
+        onDismiss,
+    ) {
+        Field(name, stringResource(R.string.category_name), { name = it.take(30) })
+        if (name.isNotBlank() && !categories.canAdd(name)) Text(stringResource(R.string.category_exists), color = palette.danger, fontSize = 13.sp)
     }
 }
 

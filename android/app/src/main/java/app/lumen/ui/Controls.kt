@@ -6,11 +6,13 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -19,11 +21,15 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.DateRangePicker
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDatePickerState
+import androidx.compose.material3.rememberDateRangePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -43,6 +49,8 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.lumen.R
+import app.lumen.data.Currency
+import app.lumen.data.Period
 import java.time.Instant
 import java.time.LocalDate
 import java.time.Month
@@ -168,55 +176,162 @@ internal fun DateField(label: String, value: LocalDate?, onChange: (LocalDate?) 
     }
 }
 
-/** Month and year as a title. Tap it to pick another month; the choice is shared by Home and Insights. */
+/** The period as a title. Tap it to pick a month or, from there, a date range; the choice is shared by Home and Insights. */
 @Composable
-internal fun MonthHeader(month: YearMonth, onChange: (YearMonth) -> Unit, size: TextUnit = 28.sp) {
+internal fun PeriodHeader(period: Period, onChange: (Period) -> Unit, modifier: Modifier = Modifier, size: TextUnit = 28.sp) {
     var open by rememberSaveable { mutableStateOf(false) }
-    val hint = stringResource(R.string.pick_month)
+    val hint = stringResource(R.string.pick_period)
     Row(
-        Modifier
+        modifier
             .heightIn(min = Dimens.touch)
             .semantics { contentDescription = hint }
             .clickable { open = true },
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Heading(monthTitle(month), size)
+        // A range is longer than a month name, so it is set a little smaller.
+        Heading(periodTitle(period), if (period.month == null) (size.value * 0.75f).sp else size)
         Text(" \u25BE", color = palette.muted, fontSize = size)
     }
-    if (open) MonthDialog(month, onPick = { onChange(it); open = false }, onDismiss = { open = false })
+    if (open) PeriodDialog(period, onPick = { onChange(it); open = false }, onDismiss = { open = false })
 }
 
+/** "November 2026" for a whole month, "6 Nov 2026 \u2013 21 Nov 2026" for any other range. */
+internal fun periodTitle(period: Period): String =
+    period.month?.let(::monthTitle) ?: (shortDate(period.from.toString()) + " \u2013 " + shortDate(period.to.toString()))
+
+/** Top row of Home and Insights: the period on the left, the currency menu in the upper-right corner. */
 @Composable
-private fun MonthDialog(current: YearMonth, onPick: (YearMonth) -> Unit, onDismiss: () -> Unit) {
-    var year by rememberSaveable { mutableStateOf(current.year) }
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = {
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
-                YearStep("\u2039", stringResource(R.string.year_prev)) { year-- }
-                Heading(year.toString(), 22.sp)
-                YearStep("\u203A", stringResource(R.string.year_next)) { year++ }
+internal fun ViewBar(
+    period: Period,
+    shown: Currency?,
+    options: List<Currency>,
+    onPeriod: (Period) -> Unit,
+    onShown: (Currency?) -> Unit,
+    size: TextUnit = 28.sp,
+) {
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        PeriodHeader(period, onPeriod, Modifier.weight(1f), size)
+        Spacer(Modifier.width(12.dp))
+        CurrencyMenu(shown, options, onShown)
+    }
+}
+
+/** A button with a menu: Total (every currency, listed side by side, never added) first, then each currency in use. */
+@Composable
+internal fun CurrencyMenu(selected: Currency?, options: List<Currency>, onSelect: (Currency?) -> Unit) {
+    var open by remember { mutableStateOf(false) }
+    val hint = stringResource(R.string.pick_currency)
+    val total = stringResource(R.string.total)
+    Box {
+        Row(
+            Modifier
+                .heightIn(min = Dimens.touch)
+                .clip(RoundedCornerShape(Dimens.control))
+                .background(palette.ink.copy(alpha = 0.06f))
+                .semantics { contentDescription = hint }
+                .clickable { open = true }
+                .padding(horizontal = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(selected?.let { it.sign() + " " + it.name } ?: total, color = palette.ink, fontWeight = FontWeight.SemiBold, maxLines = 1)
+            Text(" \u25BE", color = palette.muted)
+        }
+        DropdownMenu(expanded = open, onDismissRequest = { open = false }, containerColor = palette.raised) {
+            (listOf<Currency?>(null) + options).forEach { c ->
+                val on = c == selected
+                DropdownMenuItem(
+                    text = {
+                        Text(
+                            if (c == null) total else c.sign() + "  " + c.name,
+                            color = if (on) palette.accent else palette.ink,
+                            fontWeight = if (on) FontWeight.SemiBold else FontWeight.Normal,
+                        )
+                    },
+                    onClick = { open = false; onSelect(c) },
+                )
             }
-        },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                (1..12).chunked(3).forEach { months ->
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        months.forEach { m ->
-                            val target = YearMonth.of(year, m)
-                            Choice(shortMonth(m), target == current, Modifier.weight(1f)) { onPick(target) }
+        }
+    }
+}
+
+/** Every currency as exclusive chips, four to a row, by ISO code. */
+@Composable
+internal fun CurrencyChoices(selected: Currency, onSelect: (Currency) -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Currency.entries.chunked(4).forEach { row ->
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                row.forEach { c -> Choice(c.name, c == selected, Modifier.weight(1f)) { onSelect(c) } }
+                repeat(4 - row.size) { Spacer(Modifier.weight(1f)) }
+            }
+        }
+    }
+}
+
+/** A month from the year stepper and grid, or "Date range" for the calendar. */
+@Composable
+private fun PeriodDialog(current: Period, onPick: (Period) -> Unit, onDismiss: () -> Unit) {
+    var year by rememberSaveable { mutableStateOf(current.from.year) }
+    var range by rememberSaveable { mutableStateOf(false) }
+    if (range) {
+        RangeDialog(current, onPick, onDismiss = { range = false })
+    } else {
+        AlertDialog(
+            onDismissRequest = onDismiss,
+            title = {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+                    YearStep("\u2039", stringResource(R.string.year_prev)) { year-- }
+                    Heading(year.toString(), 22.sp)
+                    YearStep("\u203A", stringResource(R.string.year_next)) { year++ }
+                }
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    (1..12).chunked(3).forEach { months ->
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            months.forEach { m ->
+                                val target = YearMonth.of(year, m)
+                                Choice(shortMonth(m), target == current.month, Modifier.weight(1f)) { onPick(Period.month(target)) }
+                            }
                         }
                     }
                 }
-            }
-        },
-        confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.close), color = palette.accent) } },
-        containerColor = palette.bg,
-        titleContentColor = palette.ink,
-        textContentColor = palette.ink,
-    )
+            },
+            confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.close), color = palette.accent) } },
+            dismissButton = { TextButton(onClick = { range = true }) { Text(stringResource(R.string.date_range), color = palette.accent) } },
+            containerColor = palette.bg,
+            titleContentColor = palette.ink,
+            textContentColor = palette.ink,
+        )
+    }
 }
 
+/** The calendar: tap the first day, then the last. One tap picks a single day. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun RangeDialog(current: Period, onPick: (Period) -> Unit, onDismiss: () -> Unit) {
+    val state = rememberDateRangePickerState(
+        initialSelectedStartDateMillis = utcMillis(current.from),
+        initialSelectedEndDateMillis = utcMillis(current.to),
+    )
+    val start = state.selectedStartDateMillis
+    val end = state.selectedEndDateMillis
+    DatePickerDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = {
+            TextButton(
+                onClick = { if (start != null) onPick(Period(utcDate(start), utcDate(end ?: start))) },
+                enabled = start != null,
+            ) { Text(stringResource(R.string.save), color = palette.accent) }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel), color = palette.muted) } },
+    ) {
+        DateRangePicker(state, Modifier.height(480.dp), showModeToggle = false)
+    }
+}
+
+private fun utcMillis(date: LocalDate): Long = date.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
+
+private fun utcDate(millis: Long): LocalDate = Instant.ofEpochMilli(millis).atZone(ZoneOffset.UTC).toLocalDate()
 @Composable
 private fun YearStep(symbol: String, label: String, onClick: () -> Unit) {
     Box(

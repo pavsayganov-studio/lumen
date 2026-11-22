@@ -31,6 +31,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.lumen.R
+import app.lumen.data.Currency
 import app.lumen.data.Expense
 import app.lumen.data.PlanItem
 import app.lumen.data.Project
@@ -73,6 +74,11 @@ internal fun ProjectsScreen(projects: List<Project>, expenses: List<Expense>, on
 
 @Composable
 private fun ProjectCard(p: Project, expenses: List<Expense>, today: String, onClick: () -> Unit) {
+    WithCurrency(p.currency) { ProjectCardBody(p, expenses, today, onClick) }
+}
+
+@Composable
+private fun ProjectCardBody(p: Project, expenses: List<Expense>, today: String, onClick: () -> Unit) {
     val next = p.rows(expenses, today).firstOrNull { it.state != RowState.Paid }
     Column(
         Modifier
@@ -261,10 +267,11 @@ private fun SplitDialog(onConfirm: (Int, LocalDate) -> Unit, onDismiss: () -> Un
 
 /** New or existing project: name, kind, price and an optional target date. The schedule is built on the project screen. */
 @Composable
-internal fun ProjectEditor(initial: Project?, onClose: () -> Unit, onSave: (Project) -> Unit) {
+internal fun ProjectEditor(initial: Project?, startCurrency: Currency, onClose: () -> Unit, onSave: (Project) -> Unit) {
     var name by rememberSaveable { mutableStateOf(initial?.name ?: "") }
     var kind by rememberSaveable { mutableStateOf(initial?.kind ?: ProjectKind.Home) }
     var price by rememberSaveable { mutableStateOf(initial?.price?.let { plainAmount(it) } ?: "") }
+    var currency by rememberSaveable { mutableStateOf(startCurrency) }
     var deadline by rememberSaveable { mutableStateOf(initial?.deadline) }
     val value = parseAmount(price)
     val valid = value != null && value > 0 && name.isNotBlank()
@@ -276,6 +283,8 @@ internal fun ProjectEditor(initial: Project?, onClose: () -> Unit, onSave: (Proj
             ProjectKind.entries.forEach { k -> Choice(kindName(k), k == kind, Modifier.weight(1f)) { kind = k } }
         }
         Field(price, stringResource(R.string.price), { price = it }, KeyboardType.Decimal)
+        // The payments are made in this currency, so it is chosen once, when the project is created.
+        if (initial == null) CurrencyChoices(currency) { currency = it }
         DateField(
             stringResource(R.string.target_date),
             deadline?.let { runCatching { LocalDate.parse(it) }.getOrNull() },
@@ -285,7 +294,7 @@ internal fun ProjectEditor(initial: Project?, onClose: () -> Unit, onSave: (Proj
         Button(
             onClick = {
                 if (valid && value != null) {
-                    val base = initial ?: Project("p${System.currentTimeMillis()}", name, kind, value)
+                    val base = initial ?: Project("p${System.currentTimeMillis()}", name, kind, value, currency)
                     onSave(base.copy(name = name.trim(), kind = kind, price = value, deadline = deadline))
                 }
             },

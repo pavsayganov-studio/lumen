@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- Android: each expense and project has its own currency. Added Kazakh tenge, Uzbek sum, Azerbaijani manat, Armenian dram, Kyrgyz som and Tajik somoni. Home and Insights have a currency menu (Total or one currency) in the upper-right corner.
+- Android: reporting period on Home and Insights. The current month by default; tap the title for another month or a date range from the calendar. History follows the period and currency.
+- Android: create your own expense categories on the Add screen. Backup is version 2 (currencies and categories); older backups still restore.
+- Design system: raised surface token, one field-style button, ISO-code fallback for signs the font cannot draw.
+
 ## 0.2.0
 
 - Android: Projects tab for big purchases (home, car, trip, other) with price, target date, payment schedule, balance due and Pay buttons that record real expenses.

@@ -17,7 +17,7 @@ enum class ProjectKind(val category: String) {
 data class PlanItem(val id: String, val title: String, val amount: Double, /** yyyy-MM-dd */ val date: String)
 
 /**
- * A big purchase. [price] is the whole amount. [plan] is the schedule of planned payments and may be empty
+ * A big purchase. [price] is the whole amount, in [currency]; its payments are made in that currency. [plan] is the schedule of planned payments and may be empty
  * (saving up: pay whenever). What was paid is never stored here: it is the expenses that carry this project's id.
  */
 data class Project(
@@ -25,6 +25,7 @@ data class Project(
     val name: String,
     val kind: ProjectKind,
     val price: Double,
+    val currency: Currency,
     /** Target date, yyyy-MM-dd. */
     val deadline: String? = null,
     val plan: List<PlanItem> = emptyList(),
@@ -85,6 +86,7 @@ fun paymentFor(project: Project, amount: Double, today: LocalDate, id: String, r
         amount = amount,
         date = today.toString(),
         category = project.kind.category,
+        currency = project.currency,
         projectId = project.id,
         planRef = row?.id,
     )

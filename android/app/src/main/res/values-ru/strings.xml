@@ -23,8 +23,8 @@
     <string name="total_spending">Всего потрачено</string>
     <string name="nothing_spent">Пока ничего.</string>
     <string name="settings_blurb">Деньги остаются на этом телефоне. Мы никуда их не отправляем.</string>
-    <string name="currency">Валюта</string>
-    <string name="currency_help">Меняется только символ. Суммы не пересчитываются.</string>
+    <string name="currency">Основная валюта</string>
+    <string name="currency_help">Новые расходы начинаются в этой валюте. Суммы не пересчитываются.</string>
     <string name="theme">Оформление</string>
     <string name="theme_auto">Телефон</string>
     <string name="theme_light">Светлое</string>
@@ -46,7 +46,13 @@
     <string name="nav_projects">Проекты</string>
     <string name="month_closed">Месяц закрыт</string>
     <string name="month_ahead">Ещё не начался</string>
-    <string name="pick_month">Выберите месяц</string>
+    <string name="pick_period">Выберите период</string>
+    <string name="pick_currency">Выберите валюту</string>
+    <string name="total">Всего</string>
+    <string name="date_range">Диапазон дат</string>
+    <string name="new_category">Новая категория</string>
+    <string name="category_name">Название категории</string>
+    <string name="category_exists">Такая категория уже есть.</string>
     <string name="year_prev">Предыдущий год</string>
     <string name="year_next">Следующий год</string>
     <string name="projects_empty">Запланируйте крупную покупку</string>

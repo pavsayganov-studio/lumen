@@ -21,7 +21,7 @@ Design system: `DESIGN.md`. Read it before touching UI on either client.
 - Web ledger: `src/lib/finance.ts` (cents inside, euros in the UI). State: `src/lib/store.ts`, localStorage key `lumen-budget-v1`.
 - Web backup / language: `src/lib/backup.ts`, `src/lib/i18n.ts`. UI: `src/components/lumen/`.
 - Android: `android/app/src/main/java/app/lumen/`
-  - `data/`: `Model` (expense), `Projects` (project math), `Money`, `Storage` (SharedPreferences), `Backup` (JSON file).
+  - `data/`: `Model` (expense, category), `Period`, `Projects` (project math), `Money`, `Storage` (SharedPreferences), `Backup` (JSON file).
   - `ui/`: `Theme`, `Dimens`, `Components`, `Controls` (fields, dialogs, pickers), `NavBar`, `Screens`, `ProjectScreens`, `LumenApp` (state + navigation).
 - Android versions: only `android/gradle/libs.versions.toml`. Gradle itself: `android/gradle/wrapper/gradle-wrapper.properties`.
 - Platform plumbing, leave alone unless asked: `public/__grok/`, `server/`, `scripts/grok-pwa-*`, `scripts/app-env-plugin.mjs`,
@@ -34,6 +34,19 @@ Design system: `DESIGN.md`. Read it before touching UI on either client.
 - Currency (EUR, USD, RUB, BYN) changes the symbol only; amounts are never converted. `CURRENCIES` in `finance.ts` is the one table.
   First-launch default from the device language tag: Belarusian language or region BY → BYN, Russian → RUB, English → USD, anything else EUR.
   Web `defaultCurrency` (`finance.ts`), Android `currencyFor` (`Money.kt`). Saved once, so it never shifts when the language changes.
+- Android currencies (`Currency` in `Money.kt`, the one table): EUR, USD, RUB, BYN, KZT ₸, UZS soʻm, AZN ₼, AMD ֏, KGS ⃀ (U+20C0), TJS SM.
+  Uzbekistan has no official sign (the sum is written soʻm); Tajikistan uses the abbreviation SM. A sign the phone's font cannot draw is
+  shown as the ISO code instead (`Currency.sign()`, `Components.kt`). The web still has the first four only.
+- Android amounts carry their own currency: `Expense.currency`, and `Project.currency`, chosen when the project is created (its payments use it).
+  Currencies are never converted and never added together: Total lists each currency side by side. Settings holds the main currency: new
+  expenses start in it, the budget is in it, and saved entries with no `currency` field (older versions) are read as being in it.
+- Android Home and Insights show one period and one currency (`ViewBar`, `Controls.kt`). Period: the current calendar month by default, or a
+  date range from the calendar (`Period`). Currency: Total or any currency in use. Both are shared by Home and Insights and are not saved.
+  History and Insights list only what is in view; Insights groups by currency, then category. The budget ring and the Budget and Available
+  figures appear only for a whole month in the main currency; every other view shows Spent.
+- Android categories: the built-in English ids plus categories the person creates (`Category`: id `c<millis>`, the name as typed, a color
+  from a fixed list). Saved under key `categories` and in the backup. Names are unique ignoring case. A custom category can be deleted
+  only while no expense uses it. Built-in names come from `categoryName`; custom ones are shown as typed.
 - Languages: Russian on a Russian device, Belarusian on a Belarusian one, English otherwise. Web: `i18n.ts`. Android: `res/values*/strings.xml`.
   Every new Android string goes into all three files.
 - Themes: Dark and Light (Cloud Dancer `#F0EEE9`, never pure white), Auto follows the phone. Web: `data-theme` on `<html>`.
@@ -41,8 +54,8 @@ Design system: `DESIGN.md`. Read it before touching UI on either client.
 - Bottom bar: Home, Transactions, Accounts, Projects, Settings (web, `navbar.tsx`).
   Android: Home, Projects, [Add], Insights, Settings. The bar is on every screen, Add and the editors included; Add is the raised
   round accent button in the middle (`ui/NavBar.kt`).
-- Android Home is the dashboard for one month plus the History section, collapsed by default. History lists every expense,
-  newest first, and deletes in place. The selected month (tap the title) is shared by Home and Insights; it is not saved.
+- Android Home is the dashboard for the chosen period and currency plus the History section for the same view, collapsed by default.
+  History lists those expenses, newest first, and deletes in place.
 - Projects: `scheduleRows` (web) and `Project.rows` (Android) are the single list of planned payments. A row is paid only by a
   recorded transaction with the same `planRef` (web also `paidBefore` for old installments). Never assume payment by date;
   unpaid rows stay Due. Balance due = price − recorded payments.
@@ -63,9 +76,9 @@ Design system: `DESIGN.md`. Read it before touching UI on either client.
   over it. Never replace a loader with `getOrDefault(emptyList())`.
 - Android `allowBackup` stays false: no cloud copy of financial data. Moving to another phone = the backup file.
 - Android backup (Settings): one readable JSON file through the system file picker (`data/Backup.kt`), no permissions, no network.
-  `{app: "lumen-backup", version: 1, exported, budget, expenses, projects}`. Restore replaces budget, expenses and projects after a
+  `{app: "lumen-backup", version: 2, exported, budget, expenses, projects, categories}`. Restore replaces all of them after a
   confirmation; currency, theme and language stay as the phone has them. The file is not encrypted; the UI says so.
-  Add fields only with a version bump and keep reading the old ones.
+  Add fields only with a version bump and keep reading the old ones: version 1 files load, their entries take the phone's main currency.
 - Web backup: `LUMEN1` code (gzip + base64url, optional password). Not interchangeable with the Android file: the models differ.
 - Updating the Android app keeps data only if the new APK has the same package (`app.lumen`), the same signing key and a higher
   `versionCode`. Never ship a debug-signed APK over a release one; uninstalling erases the data.
@@ -84,8 +97,13 @@ KISS, YAGNI, DRY, SOLID. No dead code, no unused dependencies, no speculative fe
 
 ## Working agreement
 - Smallest diff that solves the task. Say what changed and why in a few lines; no restating the request.
-- Large changes ship as a Python patch script (clean tree check, exact-match check, typecheck/test/build, rollback on failure,
-  commit, push, self-delete after a successful push).
-- Before claiming done: `npm run typecheck`, `npm test`, `npm run build`, and for Android a green **Android APK** run.
+- Every change ships as one Python patch script named `lumen_patch_NNNN_slug.py` (a new number each time). It needs main and a clean
+  tree, checks that each edit fits exactly once, runs the checks the touched files can affect, rolls back on a failure the patch
+  caused, commits, pushes to main and deletes itself after a successful push. Full rules: `docs/PROJECT_INSTRUCTIONS.md`.
+- We always push to main; no branches or pull requests. Android CI runs only on pull requests and by hand, so after an Android
+  patch run **Android APK** manually on main.
+- A check blocks a patch only when the patch can cause the failure: Android-only and docs-only patches skip the web checks; a failing
+  web check is re-run on the untouched files and blocks only on new failures (`npm test` is compared by failing test name).
+- Before claiming done: `npm run typecheck`, `npm test`, `npm run build` for web changes, and for Android a green **Android APK** run.
 - Check versions on official release pages; never guess one.
 - Never put secrets, keystores or `.env` files in git.

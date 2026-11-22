@@ -23,8 +23,8 @@
     <string name="total_spending">Total spending</string>
     <string name="nothing_spent">Nothing yet.</string>
     <string name="settings_blurb">Money stays on this phone. We never send it anywhere.</string>
-    <string name="currency">Currency</string>
-    <string name="currency_help">Changes the symbol only. Amounts are not converted.</string>
+    <string name="currency">Main currency</string>
+    <string name="currency_help">New expenses start in this currency. Amounts are never converted.</string>
     <string name="theme">Appearance</string>
     <string name="theme_auto">This phone</string>
     <string name="theme_light">Light</string>
@@ -44,7 +44,13 @@
     <string name="nav_projects">Projects</string>
     <string name="month_closed">Month closed</string>
     <string name="month_ahead">Not started yet</string>
-    <string name="pick_month">Choose month</string>
+    <string name="pick_period">Choose period</string>
+    <string name="pick_currency">Choose currency</string>
+    <string name="total">Total</string>
+    <string name="date_range">Date range</string>
+    <string name="new_category">New category</string>
+    <string name="category_name">Category name</string>
+    <string name="category_exists">This category already exists.</string>
     <string name="year_prev">Previous year</string>
     <string name="year_next">Next year</string>
     <string name="projects_empty">Plan a big purchase</string>
