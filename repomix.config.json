@@ -27,7 +27,8 @@
       "src/lib/preview-*",
       "src/components/preview-host-bridge.tsx",
       "android/gradle/wrapper/**",
-      "android/gradlew*"
+      "android/gradlew*",
+      "docs/ai/**"
     ]
   }
 }

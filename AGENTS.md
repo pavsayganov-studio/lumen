@@ -91,6 +91,12 @@ Design system: `DESIGN.md`. Read it before touching UI on either client.
   Check https://developer.android.com/developer-verification before relying on dates.
 - Keep what builds reputation: one package name, one release key, release (not debug) APKs from GitHub Releases.
 
+## Spec 0.3.0 (planned, not built)
+`docs/ai/SPEC-0.3.0.md` (requirements), `I18N-0.3.0.md` (strings in en, ru, be) and `TASKS-0.3.0.md` (phases P1 to P8) describe what 0.3.0
+should become: data format v3 shared by web and Android, edit and delete, category management, budget per currency, file and code transfer,
+GitHub Pages hosting, GEL. Read the spec before touching the data format, backup, transfer, categories, budgets or hosting. The files are not
+in `npm run pack`: attach the one you need. This file says what is true today; a phase moves its rules here only when it ships.
+
 ## Principles
 KISS, YAGNI, DRY, SOLID. No dead code, no unused dependencies, no speculative features. One place per fact
 (versions, colors, currencies). Keep logic out of composables and components; pure project and backup logic lives in `data/`.
