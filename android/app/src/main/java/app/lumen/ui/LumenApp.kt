@@ -29,7 +29,9 @@ import app.lumen.data.Ledger
 import app.lumen.data.Period
 import app.lumen.data.Project
 import app.lumen.data.ThemeMode
+import app.lumen.data.deleted
 import app.lumen.data.detachFrom
+import app.lumen.data.loadAssets
 import app.lumen.data.loadBudget
 import app.lumen.data.loadCategories
 import app.lumen.data.loadCurrency
@@ -37,6 +39,8 @@ import app.lumen.data.loadExpenses
 import app.lumen.data.loadProjects
 import app.lumen.data.loadTheme
 import app.lumen.data.paymentFor
+import app.lumen.data.renamed
+import app.lumen.data.saveAssets
 import app.lumen.data.saveBudget
 import app.lumen.data.saveCategories
 import app.lumen.data.saveCurrency
@@ -46,7 +50,7 @@ import app.lumen.data.saveTheme
 import java.time.LocalDate
 import java.time.YearMonth
 
-internal enum class Screen { Home, Projects, Project, ProjectEdit, Insights, Settings, Add, Budget }
+internal enum class Screen { Home, Projects, Project, ProjectEdit, Assets, AssetEdit, Settings, Add, Budget }
 
 /** The period survives a screen rotation as its text form. */
 private val PeriodSaver = Saver<Period, Any>(save = { it.toString() }, restore = { Period.parse(it as String) })
@@ -57,19 +61,24 @@ fun LumenApp() {
     var screen by rememberSaveable { mutableStateOf(Screen.Home) }
     // The main currency: the budget is in it, new expenses start in it, and entries saved without a currency belong to it.
     var currency by remember { mutableStateOf(loadCurrency(context)) }
-    // What Home and Insights show; not saved. Whole current month, in the main currency.
+    // What Home shows; not saved. Whole current month, in the main currency.
     var period by rememberSaveable(stateSaver = PeriodSaver) { mutableStateOf(Period.month(YearMonth.now())) }
     // A currency name, or empty for Total (every currency, side by side).
     var viewCode by rememberSaveable { mutableStateOf(currency.name) }
     var openProject by rememberSaveable { mutableStateOf<String?>(null) }
+    // The currency of the Assets total; null follows the main currency.
+    var assetsCode by rememberSaveable { mutableStateOf<String?>(null) }
+    var openAsset by rememberSaveable { mutableStateOf<String?>(null) }
     var budget by remember { mutableStateOf(loadBudget(context)) }
     var expenses by remember { mutableStateOf(loadExpenses(context, currency)) }
     var projects by remember { mutableStateOf(loadProjects(context, currency)) }
     var categories by remember { mutableStateOf(loadCategories(context)) }
+    var assets by remember { mutableStateOf(loadAssets(context)) }
     var themeMode by remember { mutableStateOf(loadTheme(context)) }
     LaunchedEffect(expenses) { saveExpenses(context, expenses) }
     LaunchedEffect(projects) { saveProjects(context, projects) }
     LaunchedEffect(categories) { saveCategories(context, categories) }
+    LaunchedEffect(assets) { saveAssets(context, assets) }
 
     val dark = when (themeMode) {
         ThemeMode.Dark -> true
@@ -91,6 +100,7 @@ fun LumenApp() {
         screen = when (shown) {
             Screen.ProjectEdit -> if (open != null) Screen.Project else Screen.Projects
             Screen.Project -> Screen.Projects
+            Screen.AssetEdit -> Screen.Assets
             else -> Screen.Home
         }
     }
@@ -99,12 +109,14 @@ fun LumenApp() {
     val selectedTab = when (shown) {
         Screen.Budget -> Screen.Home
         Screen.Project, Screen.ProjectEdit -> Screen.Projects
+        Screen.AssetEdit -> Screen.Assets
         Screen.Add -> null
         else -> shown
     }
     val deleteExpense = { id: String -> expenses = expenses.filterNot { it.id == id } }
     val view = Currency.entries.firstOrNull { it.name == viewCode }
     val onShown = { picked: Currency? -> viewCode = picked?.name ?: "" }
+    val assetsView = Currency.entries.firstOrNull { it.name == assetsCode } ?: currency
 
     LumenTheme(dark, currency, categories) {
         val p = palette
@@ -121,11 +133,26 @@ fun LumenApp() {
                         onBudget = { screen = Screen.Budget },
                         onDelete = deleteExpense,
                     )
-                    Screen.Insights -> InsightsScreen(expenses, currency, period, view, onPeriod = { period = it }, onShown = onShown)
+                    Screen.Assets -> AssetsScreen(
+                        assets,
+                        assetsView,
+                        onView = { assetsCode = it.name },
+                        onOpen = { openAsset = it; screen = Screen.AssetEdit },
+                        onNew = { openAsset = null; screen = Screen.AssetEdit },
+                    )
+                    Screen.AssetEdit -> AssetEditor(
+                        assets.firstOrNull { it.id == openAsset },
+                        currency,
+                        back,
+                        onDelete = { assets = assets.filterNot { it.id == openAsset }; screen = Screen.Assets },
+                    ) { saved ->
+                        assets = if (assets.any { it.id == saved.id }) assets.map { if (it.id == saved.id) saved else it } else assets + saved
+                        screen = Screen.Assets
+                    }
                     Screen.Settings -> SettingsScreen(
                         currency,
                         themeMode,
-                        Ledger(budget, expenses, projects, categories),
+                        Ledger(budget, expenses, projects, categories, assets),
                         onCurrency = { currency = it; saveCurrency(context, it) },
                         onTheme = { themeMode = it; saveTheme(context, it) },
                         onRestore = { restored ->
@@ -134,17 +161,18 @@ fun LumenApp() {
                             expenses = restored.expenses
                             projects = restored.projects
                             categories = restored.categories
+                            assets = restored.assets
                         },
                     )
                     Screen.Add -> AddScreen(
-                        expenses,
                         categories,
-                        startCurrency = view ?: currency,
+                        startCurrency = currency,
                         onClose = back,
                         onNewCategory = { categories = categories + it },
-                        onDeleteCategory = { id -> categories = categories.filterNot { it.id == id } },
-                        onSave = { title, amount, category, spentIn ->
-                            expenses = expenses + Expense("x${System.currentTimeMillis()}", title, amount, LocalDate.now().toString(), category, spentIn)
+                        onRenameCategory = { id, name -> categories = categories.renamed(id, name) },
+                        onDeleteCategory = { id -> categories = categories.deleted(id) },
+                        onSave = { comment, amount, category, spentIn ->
+                            expenses = expenses + Expense("x${System.currentTimeMillis()}", comment, amount, LocalDate.now().toString(), category, spentIn)
                             // Back on Home the new expense must be in view; Total already shows every currency.
                             if (view != null) viewCode = spentIn.name
                             screen = Screen.Home

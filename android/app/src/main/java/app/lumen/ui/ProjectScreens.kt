@@ -210,7 +210,7 @@ internal fun ProjectScreen(
 }
 
 @Composable
-private fun ActionLink(label: String, color: androidx.compose.ui.graphics.Color = palette.accent, onClick: () -> Unit) {
+internal fun ActionLink(label: String, color: androidx.compose.ui.graphics.Color = palette.accent, onClick: () -> Unit) {
     Text(
         label,
         color = color,

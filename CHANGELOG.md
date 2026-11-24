@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Android: Assets tab replaces Insights. Add bank accounts by hand (bank, amount, currency); the total shows the date it is as of and its currency is a drop-down. Rates are not wired yet, so other currencies are listed beside the total, not converted.
+- Android: add expense has the currency as a narrow drop-down inside the amount field; "Name" is now an optional "Comment"; no category is preselected.
+- Android: pencil renames a category, trash deletes it (built-in ones too). Expenses of a deleted category keep its name in History.
+- Android: History is open by default and grouped by day, newest first, with a separator between days.
+- Android: main currency and theme in Settings are drop-downs. Backup is version 3 (assets, renamed and deleted categories); older backups still restore.
+- CI: **Android APK** by hand builds debug or release with a chosen version name and code, uploads a named APK with its checksum and a run summary. Tag releases with a hyphen are pre-releases.
+- Toolchain: Android Gradle plugin 9.5.1, Kotlin Compose plugin 2.4.21, Gradle 9.9.1.
 - Docs: owner decisions D-1 to D-7 in `docs/ai/DECISIONS.md`. `npm run pack` now includes `scripts/`, `server/` and `.github/`.
 - Docs: 0.3.0 spec in `docs/ai/` (data format v3, edit and delete, category management, budget per currency, file and code transfer, GitHub Pages, GEL). Nothing is built yet.
 - Android: each expense and project has its own currency. Added Kazakh tenge, Uzbek sum, Azerbaijani manat, Armenian dram, Kyrgyz som and Tajik somoni. Home and Insights have a currency menu (Total or one currency) in the upper-right corner.

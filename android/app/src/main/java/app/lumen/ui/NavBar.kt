@@ -31,7 +31,7 @@ import app.lumen.R
 private val SECTIONS = listOf(
     Triple(Screen.Home, R.drawable.ic_nav_home, R.string.nav_home),
     Triple(Screen.Projects, R.drawable.ic_nav_projects, R.string.nav_projects),
-    Triple(Screen.Insights, R.drawable.ic_nav_chart, R.string.nav_insights),
+    Triple(Screen.Assets, R.drawable.ic_nav_assets, R.string.nav_assets),
     Triple(Screen.Settings, R.drawable.ic_nav_settings, R.string.nav_settings),
 )
 

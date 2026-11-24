@@ -2,7 +2,6 @@
 <resources>
     <string name="nav_home">Home</string>
     <string name="nav_add">Add</string>
-    <string name="nav_insights">Insights</string>
     <string name="nav_settings">Settings</string>
     <string name="close">Close</string>
     <string name="save">Save</string>
@@ -20,7 +19,6 @@
     <string name="name">Name</string>
     <string name="save_expense">Save expense</string>
     <string name="monthly_budget">Monthly budget</string>
-    <string name="total_spending">Total spending</string>
     <string name="nothing_spent">Nothing yet.</string>
     <string name="settings_blurb">Money stays on this phone. We never send it anywhere.</string>
     <string name="currency">Main currency</string>
@@ -92,4 +90,20 @@
     <string name="restore_title">Replace data on this phone?</string>
     <string name="restore_ask">Everything saved here now is replaced by the backup.</string>
     <string name="restore">Restore</string>
+    <string name="nav_assets">Assets</string>
+    <string name="comment">Comment</string>
+    <string name="category">Category</string>
+    <string name="edit_category">Edit category</string>
+    <string name="edit_named">Edit %1$s</string>
+    <string name="delete_named">Delete %1$s</string>
+    <string name="delete_category_ask">Past expenses keep this name in History.</string>
+    <string name="total_assets">Total assets</string>
+    <string name="as_of">As of %1$s</string>
+    <string name="not_converted">Not converted yet</string>
+    <string name="add_account">Add bank account</string>
+    <string name="add_account_hint">Type the bank, the amount and the currency by hand.</string>
+    <string name="bank_account">Bank account</string>
+    <string name="bank_name">Bank name</string>
+    <string name="delete_account">Delete account</string>
+    <string name="delete_account_ask">This account is removed from your assets.</string>
 </resources>

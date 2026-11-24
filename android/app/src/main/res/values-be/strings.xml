@@ -2,7 +2,6 @@
 <resources>
     <string name="nav_home">Галоўная</string>
     <string name="nav_add">Дадаць</string>
-    <string name="nav_insights">Агляд</string>
     <string name="nav_settings">Налады</string>
     <string name="close">Закрыць</string>
     <string name="save">Захаваць</string>
@@ -20,7 +19,6 @@
     <string name="name">Назва</string>
     <string name="save_expense">Захаваць расход</string>
     <string name="monthly_budget">Бюджэт на месяц</string>
-    <string name="total_spending">Усяго выдаткавана</string>
     <string name="nothing_spent">Пакуль нічога.</string>
     <string name="settings_blurb">Грошы застаюцца на гэтым тэлефоне. Мы нікуды іх не адпраўляем.</string>
     <string name="currency">Асноўная валюта</string>
@@ -94,4 +92,20 @@
     <string name="restore_title">Замяніць даныя на гэтым тэлефоне?</string>
     <string name="restore_ask">Усё, што захавана тут, будзе заменена копіяй.</string>
     <string name="restore">Аднавіць</string>
+    <string name="nav_assets">Актывы</string>
+    <string name="comment">Каментарый</string>
+    <string name="category">Катэгорыя</string>
+    <string name="edit_category">Змяніць катэгорыю</string>
+    <string name="edit_named">Змяніць: %1$s</string>
+    <string name="delete_named">Выдаліць: %1$s</string>
+    <string name="delete_category_ask">Мінулыя расходы захаваюць гэту назву ў гісторыі.</string>
+    <string name="total_assets">Усяго актываў</string>
+    <string name="as_of">На %1$s</string>
+    <string name="not_converted">Пакуль не пераразлічана</string>
+    <string name="add_account">Дадаць банкаўскі рахунак</string>
+    <string name="add_account_hint">Увядзіце банк, суму і валюту ўручную.</string>
+    <string name="bank_account">Банкаўскі рахунак</string>
+    <string name="bank_name">Назва банка</string>
+    <string name="delete_account">Выдаліць рахунак</string>
+    <string name="delete_account_ask">Рахунак будзе прыбраны з актываў.</string>
 </resources>

@@ -25,6 +25,7 @@ import androidx.compose.material3.DateRangePicker
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -40,7 +41,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -176,7 +179,7 @@ internal fun DateField(label: String, value: LocalDate?, onChange: (LocalDate?) 
     }
 }
 
-/** The period as a title. Tap it to pick a month or, from there, a date range; the choice is shared by Home and Insights. */
+/** The period as a title. Tap it to pick a month or, from there, a date range; the choice is kept while the app is open. */
 @Composable
 internal fun PeriodHeader(period: Period, onChange: (Period) -> Unit, modifier: Modifier = Modifier, size: TextUnit = 28.sp) {
     var open by rememberSaveable { mutableStateOf(false) }
@@ -199,7 +202,7 @@ internal fun PeriodHeader(period: Period, onChange: (Period) -> Unit, modifier: 
 internal fun periodTitle(period: Period): String =
     period.month?.let(::monthTitle) ?: (shortDate(period.from.toString()) + " \u2013 " + shortDate(period.to.toString()))
 
-/** Top row of Home and Insights: the period on the left, the currency menu in the upper-right corner. */
+/** Top row of Home: the period on the left, the currency menu in the upper-right corner. */
 @Composable
 internal fun ViewBar(
     period: Period,
@@ -216,42 +219,111 @@ internal fun ViewBar(
     }
 }
 
-/** A button with a menu: Total (every currency, listed side by side, never added) first, then each currency in use. */
+/**
+ * A field-style button that opens a menu: the one look for a value picked from a short list. [current] is what the button shows and
+ * [label] the text of each item. [wide] stretches it over the row; [compact] is the narrow form that sits inside a text field.
+ */
 @Composable
-internal fun CurrencyMenu(selected: Currency?, options: List<Currency>, onSelect: (Currency?) -> Unit) {
+internal fun <T> MenuButton(
+    current: String,
+    items: List<T>,
+    label: (T) -> String,
+    selected: (T) -> Boolean,
+    hint: String,
+    onSelect: (T) -> Unit,
+    modifier: Modifier = Modifier,
+    wide: Boolean = false,
+    compact: Boolean = false,
+) {
     var open by remember { mutableStateOf(false) }
-    val hint = stringResource(R.string.pick_currency)
-    val total = stringResource(R.string.total)
-    Box {
+    Box(if (wide) modifier.fillMaxWidth() else modifier) {
         Row(
             Modifier
+                .then(if (wide) Modifier.fillMaxWidth() else Modifier)
                 .heightIn(min = Dimens.touch)
                 .clip(RoundedCornerShape(Dimens.control))
                 .background(palette.ink.copy(alpha = 0.06f))
-                .semantics { contentDescription = hint }
-                .clickable { open = true }
-                .padding(horizontal = 14.dp),
+                .semantics { contentDescription = "$hint: $current" }
+                .clickable(role = Role.DropdownList) { open = true }
+                .padding(horizontal = if (compact) 10.dp else 14.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(selected?.let { it.sign() + " " + it.name } ?: total, color = palette.ink, fontWeight = FontWeight.SemiBold, maxLines = 1)
+            Text(current, color = palette.ink, fontWeight = FontWeight.SemiBold, maxLines = 1)
+            if (wide) Spacer(Modifier.weight(1f))
             Text(" \u25BE", color = palette.muted)
         }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }, containerColor = palette.raised) {
-            (listOf<Currency?>(null) + options).forEach { c ->
-                val on = c == selected
+            items.forEach { item ->
+                val on = selected(item)
                 DropdownMenuItem(
                     text = {
                         Text(
-                            if (c == null) total else c.sign() + "  " + c.name,
+                            label(item),
                             color = if (on) palette.accent else palette.ink,
                             fontWeight = if (on) FontWeight.SemiBold else FontWeight.Normal,
                         )
                     },
-                    onClick = { open = false; onSelect(c) },
+                    onClick = { open = false; onSelect(item) },
                 )
             }
         }
     }
+}
+
+private fun currencyLabel(currency: Currency): String = currency.sign() + "  " + currency.name
+
+/** Total (every currency, listed side by side, never added) first, then each currency in use. */
+@Composable
+internal fun CurrencyMenu(selected: Currency?, options: List<Currency>, onSelect: (Currency?) -> Unit) {
+    val total = stringResource(R.string.total)
+    val label = { c: Currency? -> if (c == null) total else currencyLabel(c) }
+    MenuButton(label(selected), listOf<Currency?>(null) + options, label, { it == selected }, stringResource(R.string.pick_currency), onSelect)
+}
+
+/** Every currency in a drop-down. [compact] shows only the sign, for the narrow form inside an amount field. */
+@Composable
+internal fun CurrencyPicker(
+    selected: Currency,
+    onSelect: (Currency) -> Unit,
+    modifier: Modifier = Modifier,
+    wide: Boolean = false,
+    compact: Boolean = false,
+) {
+    MenuButton(
+        if (compact) selected.sign() else currencyLabel(selected),
+        Currency.entries,
+        ::currencyLabel,
+        { it == selected },
+        stringResource(R.string.pick_currency),
+        onSelect,
+        modifier,
+        wide,
+        compact,
+    )
+}
+
+/** An amount with its currency in a small, narrow drop-down at the right edge of the field. */
+@Composable
+internal fun AmountField(amount: String, onAmount: (String) -> Unit, currency: Currency, onCurrency: (Currency) -> Unit) {
+    OutlinedTextField(
+        amount,
+        onAmount,
+        label = { Text(stringResource(R.string.amount)) },
+        singleLine = true,
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+        trailingIcon = { CurrencyPicker(currency, onCurrency, Modifier.padding(end = 8.dp), compact = true) },
+        colors = fieldColors(),
+        modifier = Modifier.fillMaxWidth(),
+    )
+}
+
+/** An icon-only button with a 48dp touch target. [label] is what a screen reader says. */
+@Composable
+internal fun IconAction(icon: Int, label: String, onClick: () -> Unit) {
+    Box(
+        Modifier.size(Dimens.touch).semantics { contentDescription = label }.clickable(role = Role.Button, onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) { Icon(painterResource(icon), null, tint = palette.muted, modifier = Modifier.size(22.dp)) }
 }
 
 /** Every currency as exclusive chips, four to a row, by ISO code. */

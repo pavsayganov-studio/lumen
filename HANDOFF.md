@@ -69,9 +69,32 @@ Rules are in `AGENTS.md`; look in `DESIGN.md`. Android only: the web client is u
 - Categories: `Category` in `data/Model.kt`, key `categories` in SharedPreferences, created on the Add screen, deletable while unused. `LocalCategories` feeds `categoryName` and `categoryColor`.
 - Projects: the currency is chosen when a project is created and fixed afterwards; payments inherit it.
 - Not built here: Android compiles only in CI. Run **Android APK** by hand on this branch. Check on a phone: the date range dialog fits small screens (it is 480dp tall), and the KGS sign (U+20C0) on an older phone shows as KGS.
-- Known gaps: budgets are one number in the main currency; no per-currency budget. No rename or recolor of a custom category.
+- Known gaps: budgets are one number in the main currency; no per-currency budget. No recolor of a category.
 - Known, not ours: on main, 8 tests in `scripts/grok-pwa-plugin.test.mjs` already fail (they expect the template's default og:title and
   app name, but the project bakes the identity "Lumen"). The patch gate reports them and does not block on them. Fix them in their own patch.
+
+## Android: assets, category editing, history by day (after 0.2.0, not released)
+
+Rules are in `AGENTS.md`; look in `DESIGN.md`. Android only; the web client is unchanged.
+
+- Assets tab replaces Insights (the Russian label was "Обзор"). `Asset` (`data/Assets.kt`): bank, amount, currency, saved under key `assets`
+  and in the backup (version 3; older files load without assets). Total on top in the chosen currency (main by default, not saved) with the
+  "As of" date. **No exchange rates yet**, so nothing is converted: the total adds up the accounts in that currency and the rest are listed as
+  not converted. Next: background rate updates. Google Finance has no public API, so the source is still to be chosen; fetching rates needs
+  the INTERNET permission and sends only currency codes, never ledger data.
+- Add expense: the currency is a narrow drop-down inside the amount field and starts in the main currency (Settings), not in the Home view.
+  "Name" became an optional "Comment" (`Expense.title`, may be empty). No category is selected at first and one is required.
+- Categories: pencil opens the editor inside `AddScreen` (so the form keeps what was typed), trash asks and deletes. Built-ins can be renamed
+  and deleted too: they get an entry in `categories` (`name`, `removed`). A deleted category stays on file and in History.
+- Home: History is open by default and grouped by day (newest first, a hairline between days). The History count follows the view.
+- Settings: main currency and theme are drop-downs (`MenuButton`).
+- CI: **Android APK** by hand takes build type (debug or release), version name and version code, and uploads
+  `lumen-<name>-<code>-<type>.apk` with its SHA-256 and a run summary. Defaults live in `app/build.gradle.kts` (`-PversionName`, `-PversionCode`).
+  The tag workflow marks a hyphenated tag as a pre-release.
+- Toolchain: AGP 9.5.1 (needs Gradle 9.6.0 or newer), Kotlin Compose plugin 2.4.21, Gradle 9.9.1 (wrapper properties only; the wrapper jar and
+  scripts are unchanged).
+- Not built here: Android compiles only in CI. Run **Android APK** by hand on main. Check on a phone: the drop-down inside the amount field, the
+  pencil and trash targets, History with many days, and the Assets total with accounts in two currencies.
 
 ## Spec 0.3.0 (docs only, nothing built)
 

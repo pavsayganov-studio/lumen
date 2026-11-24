@@ -1,6 +1,6 @@
 name: Android release
 
-# Push a tag like v0.1.0 (it must equal v + versionName in android/app/build.gradle.kts).
+# Push a tag like v0.1.0 (it must equal v + the default versionName in android/app/build.gradle.kts).
 # Builds a signed APK and attaches it to a GitHub release.
 on:
   push:
@@ -26,7 +26,7 @@ jobs:
 
       - name: Tag must match versionName
         run: |
-          version=$(sed -n 's/.*versionName = "\([^"]*\)".*/\1/p' app/build.gradle.kts)
+          version=$(sed -n 's/.*gradleProperty("versionName").getOrElse("\([^"]*\)").*/\1/p' app/build.gradle.kts)
           test "v$version" = "$GITHUB_REF_NAME" || { echo "Tag $GITHUB_REF_NAME does not match versionName $version"; exit 1; }
 
       - uses: actions/setup-java@v6
@@ -62,4 +62,7 @@ jobs:
           apk="lumen-$GITHUB_REF_NAME.apk"
           cp app/build/outputs/apk/release/*.apk "$apk"
           sha256sum "$apk" > "$apk.sha256"
-          gh release create "$GITHUB_REF_NAME" "$apk" "$apk.sha256" --title "Lumen $GITHUB_REF_NAME" --generate-notes --verify-tag
+          # A tag with a hyphen (v0.3.0-rc1) is a pre-release.
+          flags=""
+          case "$GITHUB_REF_NAME" in *-*) flags="--prerelease" ;; esac
+          gh release create "$GITHUB_REF_NAME" "$apk" "$apk.sha256" --title "Lumen $GITHUB_REF_NAME" --generate-notes --verify-tag $flags

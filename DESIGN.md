@@ -29,16 +29,23 @@ Shopping `#8B7CFF`, Entertainment `#F6C445`, Health `#34D399`.
 - Web: Outfit; hero 3.05rem, micro 0.6875rem; card radius 1.35rem. Android: system font; screen titles 28sp, section titles 18–22sp,
   hero amount 36sp, captions 12–13sp.
 - Android `Dimens`: screen padding 20dp, card radius 22dp, control radius 16dp, touch target 48dp.
-- Cards: ink at 6% over bg, no border. Dividers are avoided; spacing separates.
+- Cards: ink at 6% over bg, no border. Dividers are avoided; spacing separates. The one exception is the hairline between days in History.
 
 ## Components
 - **Bottom bar**: four sections and one raised round Add button in the middle. Always visible. Selected = accent icon and label on a 16% accent indicator.
 - **Add button**: 64dp circle, accent gradient (`accentFrom → accentTo`), `onAccent` plus icon, accent glow, stands 20dp above the bar.
-- **Period title**: month and year with a ▾, or a date range (one step smaller). Tap opens a year stepper and a 3×4 month grid; "Date range" opens the calendar (tap the first day, then the last). Shared by Home and Insights.
-- **Currency menu**: a field-style button (48dp, control radius, ink 6%) in the upper-right corner of Home and Insights, showing sign and ISO code or Total, with a ▾. The menu is a raised surface: Total first, then each currency in use; the current one in accent.
-- **Currency chips**: every currency by ISO code, four to a row, as Choice chips. Used in Settings, Add and the new-project form.
-- **Category list** (Add): built-in and custom categories as colored text rows; "+ New category" in accent below them; ✕ on a custom one nobody uses.
-- **History**: a collapsed section header with the count and ▾/▴; expanded rows show title, category · date, amount, and ✕ to delete.
+- **Period title**: month and year with a ▾, or a date range (one step smaller). Tap opens a year stepper and a 3×4 month grid; "Date range" opens the calendar (tap the first day, then the last). Used on Home.
+- **Drop-down** (`MenuButton`): the one look for a value picked from a short list: a field-style button (48dp, control radius, ink 6%) with a ▾.
+  The menu is a raised surface; the current item is in accent. Used for the currency menu in the upper-right corner of Home (Total first, then
+  each currency in use), the currency of the Assets total, and the main currency and the theme in Settings (full width). Inside an amount
+  field it is the narrow form: the currency sign only, at the right edge.
+- **Currency chips**: every currency by ISO code, four to a row, as Choice chips. Used in the new-project form.
+- **Category list** (Add): all categories as colored text rows, none selected when the screen opens. Each row ends in a pencil (opens the
+  category editor in place of the form) and a trash (asks first): 22dp muted icons in 48dp targets. "+ New category" in accent below the rows.
+- **History**: a section header with the count and ▾/▴, open by default. Rows are grouped by day, newest first: a muted date, then that
+  day's rows (comment or, without one, the category as the title; the category beneath a comment; amount; ✕ to delete). A hairline separates days.
+- **Assets**: the total on top (muted title with the currency drop-down at the right, 40sp figure, muted "As of" date; other currencies
+  beneath as not converted), then the add-account button (a prompt card while there are none), then one row per account; a tap opens its card.
 - **Progress bar**: 8dp, rounded, accent gradient on ink 8%. Used for a project's paid share.
 - **Row (`TxRow`)**: title truncates, amount stays; subtitle muted 13sp. Paid rows ✓ in good, due rows amount in danger.
 - **Dialogs** (`FormDialog`): bg surface, title 20sp, accent confirm, muted cancel. Dates use the system date picker.
@@ -56,3 +63,4 @@ Shopping `#8B7CFF`, Entertainment `#F6C445`, Health `#34D399`.
 - A currency sign the phone's font cannot draw falls back to the ISO code, so no empty boxes in money. Chips always use the ISO code.
 - Custom category colors come from a fixed list of six, none equal to a built-in category color; the person picks a name, not a color.
 - Amounts of different currencies are never merged into one figure: each gets its own line, in the same size and weight.
+- Drop-downs replace chips for the main currency and the theme; icon-only actions (`IconAction`) have a description that names the item.

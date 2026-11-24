@@ -12,6 +12,7 @@ private const val KEY_BUDGET = "budget"
 private const val KEY_CURRENCY = "currency"
 private const val KEY_THEME = "theme"
 private const val KEY_CATEGORIES = "categories"
+private const val KEY_ASSETS = "assets"
 
 /** Saved text that could not be read is copied under this prefix first, so the next save never destroys it. */
 private const val UNREADABLE = "unreadable_"
@@ -111,18 +112,36 @@ fun saveProjects(context: Context, projects: List<Project>) {
 }
 
 internal fun categoriesToJson(categories: List<Category>): JSONArray = JSONArray().also { array ->
-    categories.forEach { c -> array.put(JSONObject().put("id", c.id).put("name", c.name).put("color", c.color)) }
+    categories.forEach { c -> array.put(JSONObject().put("id", c.id).put("name", c.name).put("color", c.color).put("removed", c.removed)) }
 }
 
 internal fun categoriesFromJson(array: JSONArray): List<Category> = List(array.length()) { i ->
     val o = array.getJSONObject(i)
-    Category(o.getString("id"), o.getString("name"), o.getLong("color"))
+    Category(o.getString("id"), o.getString("name"), o.getLong("color"), o.optBoolean("removed", false))
 }.distinctBy { it.id }
 
 fun loadCategories(context: Context): List<Category> = readList(context, KEY_CATEGORIES, ::categoriesFromJson)
 
 fun saveCategories(context: Context, categories: List<Category>) {
     prefs(context).edit().putString(KEY_CATEGORIES, categoriesToJson(categories).toString()).apply()
+}
+
+internal fun assetsToJson(assets: List<Asset>): JSONArray = JSONArray().also { array ->
+    assets.forEach { a ->
+        array.put(JSONObject().put("id", a.id).put("bank", a.bank).put("amount", a.amount).put("currency", a.currency.name))
+    }
+}
+
+/** Every asset is saved with its currency, so there is no fallback: an unknown one makes the text unreadable, and it is kept. */
+internal fun assetsFromJson(array: JSONArray): List<Asset> = List(array.length()) { i ->
+    val o = array.getJSONObject(i)
+    Asset(o.getString("id"), o.getString("bank"), o.getDouble("amount"), Currency.valueOf(o.getString("currency")))
+}.distinctBy { it.id }
+
+fun loadAssets(context: Context): List<Asset> = readList(context, KEY_ASSETS, ::assetsFromJson)
+
+fun saveAssets(context: Context, assets: List<Asset>) {
+    prefs(context).edit().putString(KEY_ASSETS, assetsToJson(assets).toString()).apply()
 }
 
 /** Monthly budget, in the main currency; 0 until the person sets one. */

@@ -68,7 +68,9 @@ internal fun categoryName(id: String): String {
         "Health" -> R.string.cat_health
         else -> null
     }
-    return if (builtIn != null) stringResource(builtIn) else LocalCategories.current.firstOrNull { it.id == id }?.name ?: id
+    // A built-in category the person renamed has an entry with the new name; one never renamed has an empty name.
+    val saved = LocalCategories.current.firstOrNull { it.id == id }?.name?.takeIf { it.isNotBlank() }
+    return saved ?: if (builtIn != null) stringResource(builtIn) else id
 }
 
 @Composable

@@ -5,7 +5,7 @@ Local-first monthly budget. Money stays on the device: no server ledger, no sign
 
 Two clients:
 - **Web PWA** in `src/` (TanStack Start, Vite, Zustand). The full product. Details: `HANDOFF.md`.
-- **Android** in `android/` (Jetpack Compose). A smaller mirror: month dashboard with history, projects, insights, add expense,
+- **Android** in `android/` (Jetpack Compose). A smaller mirror: month dashboard with history, projects, assets, add expense,
   backup file. Languages (en, ru, be), currency and theme work.
 
 Design system: `DESIGN.md`. Read it before touching UI on either client.
@@ -13,17 +13,20 @@ Design system: `DESIGN.md`. Read it before touching UI on either client.
 ## Commands
 - `npm run dev` · `npm run typecheck` · `npm run build` · `npm test` · `npm run lint`
 - `npm run pack` → `repomix-output.xml` (everything except the lockfile, generated files, binaries, the Android wrapper and the auth, database and multiplayer plumbing). `npm run pack:android` → Android only.
-- Android: `cd android && ./gradlew assembleDebug`. CI: **Android APK** runs on Android pull requests and by hand.
-  Release: push tag `vX.Y.Z` (= `versionName`) → **Android release** builds the signed APK and publishes it.
+- Android: `cd android && ./gradlew assembleDebug`. CI: **Android APK** runs on Android pull requests (debug) and by hand:
+  pick debug or release and, optionally, a version name and code (`-PversionName`, `-PversionCode`; the defaults are in `app/build.gradle.kts`).
+  A by-hand release build is signed and only uploaded as an artifact. Release: push tag `vX.Y.Z` (= the default `versionName`) →
+  **Android release** builds the signed APK and publishes it (a tag with a hyphen is a pre-release).
 - Only CI can build Android. Say so when it was not built; never claim an Android change works from reading alone.
 
 ## Where things live
 - Web ledger: `src/lib/finance.ts` (cents inside, euros in the UI). State: `src/lib/store.ts`, localStorage key `lumen-budget-v1`.
 - Web backup / language: `src/lib/backup.ts`, `src/lib/i18n.ts`. UI: `src/components/lumen/`.
 - Android: `android/app/src/main/java/app/lumen/`
-  - `data/`: `Model` (expense, category), `Period`, `Projects` (project math), `Money`, `Storage` (SharedPreferences), `Backup` (JSON file).
-  - `ui/`: `Theme`, `Dimens`, `Components`, `Controls` (fields, dialogs, pickers), `NavBar`, `Screens`, `ProjectScreens`, `LumenApp` (state + navigation).
+  - `data/`: `Model` (expense, category), `Period`, `Projects` (project math), `Money`, `Storage` (SharedPreferences), `Assets` (bank accounts, their total), `Backup` (JSON file).
+  - `ui/`: `Theme`, `Dimens`, `Components`, `Controls` (fields, dialogs, pickers), `NavBar`, `Screens`, `ProjectScreens`, `AssetScreens`, `LumenApp` (state + navigation).
 - Android versions: only `android/gradle/libs.versions.toml`. Gradle itself: `android/gradle/wrapper/gradle-wrapper.properties`.
+  The app's own `versionName` and `versionCode` defaults: `android/app/build.gradle.kts`.
 - Platform plumbing, leave alone unless asked: `public/__grok/`, `server/`, `scripts/grok-pwa-*`, `scripts/app-env-plugin.mjs`,
   `scripts/with-app-env.mjs`, `scripts/migrate.mjs`, `scripts/migration-plan.mjs`, `scripts/check-auth-invariant.mjs`,
   `src/lib/{auth,app-data,multiplayer,db.ts,preview-*}`.
@@ -40,22 +43,33 @@ Design system: `DESIGN.md`. Read it before touching UI on either client.
 - Android amounts carry their own currency: `Expense.currency`, and `Project.currency`, chosen when the project is created (its payments use it).
   Currencies are never converted and never added together: Total lists each currency side by side. Settings holds the main currency: new
   expenses start in it, the budget is in it, and saved entries with no `currency` field (older versions) are read as being in it.
-- Android Home and Insights show one period and one currency (`ViewBar`, `Controls.kt`). Period: the current calendar month by default, or a
-  date range from the calendar (`Period`). Currency: Total or any currency in use. Both are shared by Home and Insights and are not saved.
-  History and Insights list only what is in view; Insights groups by currency, then category. The budget ring and the Budget and Available
+- Android Home shows one period and one currency (`ViewBar`, `Controls.kt`). Period: the current calendar month by default, or a
+  date range from the calendar (`Period`). Currency: Total or any currency in use. Neither is saved.
+  History lists only what is in view. The budget ring and the Budget and Available
   figures appear only for a whole month in the main currency; every other view shows Spent.
 - Android categories: the built-in English ids plus categories the person creates (`Category`: id `c<millis>`, the name as typed, a color
-  from a fixed list). Saved under key `categories` and in the backup. Names are unique ignoring case. A custom category can be deleted
-  only while no expense uses it. Built-in names come from `categoryName`; custom ones are shown as typed.
+  from a fixed list). Saved under key `categories` and in the backup. Names are unique ignoring case among the categories shown.
+  Built-in names come from `categoryName`; custom ones are shown as typed. Any category can be renamed (pencil on the Add screen opens the
+  editor) or deleted (trash, asks first). A renamed built-in has an entry with the new name; a deleted category stays on file with
+  `removed = true`, so it leaves the Add screen but expenses that used it keep their name in History. None is selected when Add opens.
+- Android expense: amount with its currency in a drop-down inside the field (starts in the main currency), an optional Comment (`Expense.title`,
+  may be empty; History then shows the category as the title) and a required category.
 - Languages: Russian on a Russian device, Belarusian on a Belarusian one, English otherwise. Web: `i18n.ts`. Android: `res/values*/strings.xml`.
   Every new Android string goes into all three files.
 - Themes: Dark and Light (Cloud Dancer `#F0EEE9`, never pure white), Auto follows the phone. Web: `data-theme` on `<html>`.
   Android: `Palette` in `ui/Theme.kt`.
 - Bottom bar: Home, Transactions, Accounts, Projects, Settings (web, `navbar.tsx`).
-  Android: Home, Projects, [Add], Insights, Settings. The bar is on every screen, Add and the editors included; Add is the raised
+  Android: Home, Projects, [Add], Assets, Settings. The bar is on every screen, Add and the editors included; Add is the raised
   round accent button in the middle (`ui/NavBar.kt`).
-- Android Home is the dashboard for the chosen period and currency plus the History section for the same view, collapsed by default.
-  History lists those expenses, newest first, and deletes in place.
+- Android Home is the dashboard for the chosen period and currency plus the History section for the same view, open by default.
+  History lists those expenses newest first, one block per day (a date, then that day's rows, a hairline between days), and deletes in place.
+- Android assets (`data/Assets.kt`, `ui/AssetScreens.kt`): bank accounts typed in by hand (`Asset`: bank, amount, currency), shown on the
+  Assets tab under the total and its "As of" date; a tap opens the account card. The total is in the chosen currency (the main one until
+  another is picked; not saved). **Until exchange rates exist nothing is converted:** the total adds up the accounts in that currency and
+  the other currencies are listed beside it as not converted. Planned: background rate updates, after which the total covers every account.
+  Saved under key `assets` and in the backup.
+- Android drop-downs (`MenuButton`, `Controls.kt`): the one control for a value picked from a short list. Used for the Home currency menu,
+  the Assets currency, the main currency and the theme in Settings, and the currency inside an amount field (`AmountField`).
 - Projects: `scheduleRows` (web) and `Project.rows` (Android) are the single list of planned payments. A row is paid only by a
   recorded transaction with the same `planRef` (web also `paidBefore` for old installments). Never assume payment by date;
   unpaid rows stay Due. Balance due = price − recorded payments.
@@ -71,14 +85,15 @@ Design system: `DESIGN.md`. Read it before touching UI on either client.
 ## Storage (never lose data)
 - Web: Zustand `persist` to localStorage; after loading, the app asks the browser for persistent storage (`keepStorage`) so the
   data is not evicted under storage pressure.
-- Android: SharedPreferences `lumen` (keys `extra` = expenses, `projects`, `budget`, `currency`, `theme`). The platform writes
+- Android: SharedPreferences `lumen` (keys `extra` = expenses, `projects`, `budget`, `currency`, `theme`, `categories`, `assets`). The platform writes
   atomically and flushes when the app stops. Text that fails to parse is copied to `unreadable_<key>` before anything is saved
   over it. Never replace a loader with `getOrDefault(emptyList())`.
 - Android `allowBackup` stays false: no cloud copy of financial data. Moving to another phone = the backup file.
 - Android backup (Settings): one readable JSON file through the system file picker (`data/Backup.kt`), no permissions, no network.
-  `{app: "lumen-backup", version: 2, exported, budget, expenses, projects, categories}`. Restore replaces all of them after a
+  `{app: "lumen-backup", version: 3, exported, budget, expenses, projects, categories, assets}`. Restore replaces all of them after a
   confirmation; currency, theme and language stay as the phone has them. The file is not encrypted; the UI says so.
-  Add fields only with a version bump and keep reading the old ones: version 1 files load, their entries take the phone's main currency.
+  Add fields only with a version bump and keep reading the old ones: version 1 files load, their entries take the phone's main currency;
+  version 2 files load with no assets and no deleted or renamed built-in categories.
 - Web backup: `LUMEN1` code (gzip + base64url, optional password). Not interchangeable with the Android file: the models differ.
 - Updating the Android app keeps data only if the new APK has the same package (`app.lumen`), the same signing key and a higher
   `versionCode`. Never ship a debug-signed APK over a release one; uninstalling erases the data.

@@ -11,8 +11,9 @@ android {
         applicationId = "app.lumen"
         minSdk = 26
         targetSdk = 36
-        versionCode = 4 // +1 for every release
-        versionName = "0.2.0" // keep in step with package.json; the release tag is v + this
+        // Defaults. CI overrides them for one build: ./gradlew assembleRelease -PversionName=0.3.0 -PversionCode=5
+        versionCode = providers.gradleProperty("versionCode").map(String::toInt).getOrElse(4) // +1 for every release
+        versionName = providers.gradleProperty("versionName").getOrElse("0.2.0") // keep in step with package.json; the release tag is v + this
     }
 
     // The keystore lives outside git. CI passes it through environment variables from GitHub Secrets.
